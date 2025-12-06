@@ -2,14 +2,14 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Cell, Paragraph, Row, Table},
     Frame,
 };
 
 use crate::app::{App, ConnectionStatus};
 use crate::mock::CoinData;
 use crate::theme::Theme;
-use super::widgets::{self, render_number_grid, price_change_color};
+use super::widgets::{self, price_change_color};
 
 pub fn render(frame: &mut Frame, app: &App) {
     let chunks = Layout::vertical([
@@ -86,48 +86,22 @@ fn render_content(frame: &mut Frame, area: Rect, app: &App) {
 
 fn render_coin_panel(frame: &mut Frame, area: Rect, coin: &CoinData, window: &str, theme: &Theme) {
     let chunks = Layout::vertical([
-        Constraint::Length(15), // Price info: 1 pad top + 7 grid + 1 pad bottom + 4 info + 2 borders
-        Constraint::Length(8),  // Indicators
-        Constraint::Min(8),     // Chart (increased for proper display)
+        Constraint::Length(3),  // Price box
+        Constraint::Length(7),  // Stats info
+        Constraint::Length(4),  // Indicators (2 rows + 2 borders)
+        Constraint::Min(8),     // Chart
     ])
     .split(area);
 
-    render_price_info(frame, chunks[0], coin, theme);
-    render_indicators(frame, chunks[1], coin, theme);
-    render_chart_section(frame, chunks[2], coin, window, theme);
+    render_price_box(frame, chunks[0], coin, theme);
+    render_stats_info(frame, chunks[1], coin, theme);
+    render_indicators(frame, chunks[2], coin, theme);
+    render_chart_section(frame, chunks[3], coin, window, theme);
 }
 
-fn render_price_info(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme) {
-    let (change_str, change_color, arrow) = widgets::format_change(coin.change_24h, theme);
-
-    // Format price for grid rendering
-    let price_str = format!("${:.2}", coin.price);
-
+fn render_price_box(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme) {
     // Calculate price color based on change compared to historical average
     let price_color = price_change_color(coin.price, coin.prev_price, coin.avg_change());
-
-    // Build lines: grid number with padding (top, right, bottom, left)
-    let mut lines: Vec<Line> = render_number_grid(&price_str, price_color, (1, 2, 1, 2));
-
-    // Add original formatting for other elements
-    lines.push(Line::from(vec![
-        Span::styled("24h Change: ", Style::default().fg(theme.foreground_muted)),
-        Span::styled(change_str, Style::default().fg(change_color)),
-        Span::raw(" "),
-        Span::styled(arrow, Style::default().fg(change_color)),
-    ]));
-    lines.push(Line::from(vec![
-        Span::styled("24h Volume: ", Style::default().fg(theme.foreground_muted)),
-        Span::styled(widgets::format_volume_full(coin.volume_usd, coin.volume_base, &coin.symbol), Style::default().fg(theme.foreground)),
-    ]));
-    lines.push(Line::from(vec![
-        Span::styled("24h High:   ", Style::default().fg(theme.foreground_muted)),
-        Span::styled(widgets::format_price(coin.high_24h), Style::default().fg(theme.positive)),
-    ]));
-    lines.push(Line::from(vec![
-        Span::styled("24h Low:    ", Style::default().fg(theme.foreground_muted)),
-        Span::styled(widgets::format_price(coin.low_24h), Style::default().fg(theme.negative)),
-    ]));
 
     let title = format!(" {}/USD ", coin.symbol);
     let block = Block::default()
@@ -135,58 +109,100 @@ fn render_price_info(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &The
         .title(title)
         .title_style(Style::default().fg(theme.accent).add_modifier(Modifier::BOLD));
 
+    // Determine arrow based on price change direction
+    let change = coin.price - coin.prev_price;
+    let arrow = if change > 0.0 {
+        " ▲"
+    } else if change < 0.0 {
+        " ▼"
+    } else {
+        ""
+    };
+
+    let price_line = Line::from(vec![
+        Span::styled(
+            format!("  {}", widgets::format_price(coin.price)),
+            Style::default().fg(price_color).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            arrow,
+            Style::default().fg(price_color).add_modifier(Modifier::BOLD),
+        ),
+    ]);
+
+    let paragraph = Paragraph::new(price_line).block(block);
+    frame.render_widget(paragraph, area);
+}
+
+fn render_stats_info(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme) {
+    let (change_str, change_color, arrow) = widgets::format_change(coin.change_24h, theme);
+
+    let lines = vec![
+        Line::from(vec![
+            Span::styled("24h Change: ", Style::default().fg(theme.foreground_muted)),
+            Span::styled(change_str, Style::default().fg(change_color)),
+            Span::raw(" "),
+            Span::styled(arrow, Style::default().fg(change_color)),
+        ]),
+        Line::from(vec![
+            Span::styled("24h Volume: ", Style::default().fg(theme.foreground_muted)),
+            Span::styled(widgets::format_volume_full(coin.volume_usd, coin.volume_base, &coin.symbol), Style::default().fg(theme.foreground)),
+        ]),
+        Line::from(vec![
+            Span::styled("24h High:   ", Style::default().fg(theme.foreground_muted)),
+            Span::styled(widgets::format_price(coin.high_24h), Style::default().fg(theme.positive)),
+        ]),
+        Line::from(vec![
+            Span::styled("24h Low:    ", Style::default().fg(theme.foreground_muted)),
+            Span::styled(widgets::format_price(coin.low_24h), Style::default().fg(theme.negative)),
+        ]),
+    ];
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Stats ")
+        .title_style(Style::default().fg(theme.accent_secondary));
+
     let paragraph = Paragraph::new(lines).block(block);
     frame.render_widget(paragraph, area);
 }
 
 fn render_indicators(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme) {
     let ind = &coin.indicators;
-    let (rsi6_str, rsi6_color) = widgets::format_rsi(ind.rsi_6, theme);
-    let (rsi12_str, rsi12_color) = widgets::format_rsi(ind.rsi_12, theme);
-    let (rsi24_str, rsi24_color) = widgets::format_rsi(ind.rsi_24, theme);
-    let macd_parts = widgets::format_macd(ind.macd_line, ind.macd_signal, ind.macd_histogram, theme);
 
-    let lines = vec![
-        // RSI row - all three on one line
-        Line::from(vec![
-            Span::styled("RSI: ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(format!("6:{}", rsi6_str), Style::default().fg(rsi6_color)),
-            Span::raw("  "),
-            Span::styled(format!("12:{}", rsi12_str), Style::default().fg(rsi12_color)),
-            Span::raw("  "),
-            Span::styled(format!("24:{}", rsi24_str), Style::default().fg(rsi24_color)),
-        ]),
-        // EMA values
-        Line::from(vec![
-            Span::styled("EMA(7):   ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(widgets::format_price(ind.ema_7), Style::default().fg(theme.foreground)),
-        ]),
-        Line::from(vec![
-            Span::styled("EMA(25):  ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(widgets::format_price(ind.ema_25), Style::default().fg(theme.foreground)),
-        ]),
-        Line::from(vec![
-            Span::styled("EMA(99):  ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(widgets::format_price(ind.ema_99), Style::default().fg(theme.foreground)),
-        ]),
-        // MACD
-        Line::from(vec![
-            Span::styled("MACD:     ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(macd_parts[0].0.clone(), Style::default().fg(macd_parts[0].1)),
-            Span::raw(" / "),
-            Span::styled(macd_parts[1].0.clone(), Style::default().fg(macd_parts[1].1)),
-            Span::raw(" / "),
-            Span::styled(macd_parts[2].0.clone(), Style::default().fg(macd_parts[2].1)),
-        ]),
-    ];
+    // Colors for indicator labels and values
+    let orange = Color::Rgb(255, 165, 0);
+    let magenta = Color::Magenta;
+    let dim_purple = Color::Rgb(100, 80, 120);
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(" Indicators ")
-        .title_style(Style::default().fg(theme.accent_secondary));
+    let rsi_row = Row::new(vec![
+        Cell::from(format!("RSI(6): {:.2}", ind.rsi_6)).style(Style::default().fg(orange)),
+        Cell::from(format!("RSI(12): {:.2}", ind.rsi_12)).style(Style::default().fg(magenta)),
+        Cell::from(format!("RSI(24): {:.2}", ind.rsi_24)).style(Style::default().fg(dim_purple)),
+    ]);
 
-    let paragraph = Paragraph::new(lines).block(block);
-    frame.render_widget(paragraph, area);
+    let ema_row = Row::new(vec![
+        Cell::from(format!("EMA(7): {}", widgets::format_price(ind.ema_7))).style(Style::default().fg(orange)),
+        Cell::from(format!("EMA(25): {}", widgets::format_price(ind.ema_25))).style(Style::default().fg(magenta)),
+        Cell::from(format!("EMA(99): {}", widgets::format_price(ind.ema_99))).style(Style::default().fg(dim_purple)),
+    ]);
+
+    let table = Table::new(
+        vec![rsi_row, ema_row],
+        [
+            Constraint::Ratio(1, 3),
+            Constraint::Ratio(1, 3),
+            Constraint::Ratio(1, 3),
+        ],
+    )
+    .block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Indicators ")
+            .title_style(Style::default().fg(theme.accent_secondary)),
+    );
+
+    frame.render_widget(table, area);
 }
 
 fn render_chart_section(frame: &mut Frame, area: Rect, coin: &CoinData, window: &str, theme: &Theme) {
