@@ -1,0 +1,16 @@
+{
+  "theme": {
+    "colors": {
+      "foreground": "white",
+      "foreground.muted": "gray",
+      "foreground.inactive": "darkGray",
+      "accent": "cyan",
+      "accent.secondary": "yellow",
+      "positive": "green",
+      "negative": "red",
+      "neutral": "yellow",
+      "selection.background": "darkGray",
+      "statusBar.live": "green"
+    }
+  }
+}
