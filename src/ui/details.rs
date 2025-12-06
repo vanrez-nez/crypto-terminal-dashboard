@@ -107,16 +107,16 @@ fn render_content(frame: &mut Frame, area: Rect, app: &mut App) {
 
 fn render_coin_panel(frame: &mut Frame, area: Rect, coin: &CoinData, time_window: TimeWindow, theme: &Theme, chart_type: ChartType, granularity: u32, scroll_offset: isize) -> Option<isize> {
     let chunks = Layout::vertical([
-        Constraint::Length(3),  // Price + Range bar
-        Constraint::Length(5),  // Stats info (reduced - no high/low)
-        Constraint::Min(8),     // Chart
+        Constraint::Length(3),  // Price + 24h Change + Range bar
+        Constraint::Min(6),     // Chart
+        Constraint::Length(5),  // Volume
         Constraint::Length(4),  // Indicators (2 rows + 2 borders)
     ])
     .split(area);
 
     render_price_and_range(frame, chunks[0], coin, time_window, theme);
-    render_stats_info(frame, chunks[1], coin, theme);
-    let result = render_chart_section(frame, chunks[2], coin, time_window.as_str(), theme, chart_type, granularity, scroll_offset);
+    let result = render_chart_section(frame, chunks[1], coin, time_window.as_str(), theme, chart_type, granularity, scroll_offset);
+    render_volume_section(frame, chunks[2], coin, theme, chart_type, scroll_offset);
     render_indicators(frame, chunks[3], coin, theme);
     result
 }
@@ -131,17 +131,18 @@ fn render_price_and_range(frame: &mut Frame, area: Rect, coin: &CoinData, time_w
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    // Split into two columns: price (fixed) | range bar (fill)
+    // Split into three columns: price | change | range bar
     let cols = Layout::horizontal([
         Constraint::Length(22), // Price column
+        Constraint::Length(18), // Change column
         Constraint::Min(20),    // Range bar column
     ])
     .split(inner);
 
-    // === Left column: Price ===
+    // === Price ===
     let price_color = price_change_color(coin.price, coin.prev_price, coin.avg_change(), theme);
-    let change = coin.price - coin.prev_price;
-    let arrow = if change > 0.0 { " ▲" } else if change < 0.0 { " ▼" } else { "  " };
+    let tick_change = coin.price - coin.prev_price;
+    let arrow = if tick_change > 0.0 { " ▲" } else if tick_change < 0.0 { " ▼" } else { "  " };
 
     let price_line = Line::from(vec![
         Span::styled(" Price: ", Style::default().fg(theme.foreground_muted)),
@@ -150,7 +151,6 @@ fn render_price_and_range(frame: &mut Frame, area: Rect, coin: &CoinData, time_w
     ]);
     frame.render_widget(Paragraph::new(price_line), cols[0]);
 
-    // === Right column: Range bar ===
     // Filter candles to only those within the selected time window
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -158,20 +158,38 @@ fn render_price_and_range(frame: &mut Frame, area: Rect, coin: &CoinData, time_w
         .as_secs() as i64;
     let cutoff = now - time_window.duration_secs();
 
-    let (low, high) = if coin.candles.is_empty() {
+    let filtered: Vec<_> = coin.candles.iter()
+        .filter(|c| c.time >= cutoff)
+        .collect();
+
+    // === Change (based on selected time window) ===
+    let window_change = if filtered.is_empty() {
+        coin.change_24h
+    } else {
+        let first_open = filtered.first().map(|c| c.open).unwrap_or(coin.price);
+        if first_open > 0.0 {
+            ((coin.price - first_open) / first_open) * 100.0
+        } else {
+            0.0
+        }
+    };
+
+    let (change_str, change_color, change_arrow) = widgets::format_change(window_change, theme);
+    let change_line = Line::from(vec![
+        Span::styled("Change: ", Style::default().fg(theme.foreground_muted)),
+        Span::styled(change_str, Style::default().fg(change_color)),
+        Span::raw(" "),
+        Span::styled(change_arrow, Style::default().fg(change_color)),
+    ]);
+    frame.render_widget(Paragraph::new(change_line), cols[1]);
+
+    // === Range bar ===
+    let (low, high) = if filtered.is_empty() {
         (coin.low_24h, coin.high_24h)
     } else {
-        let filtered: Vec<_> = coin.candles.iter()
-            .filter(|c| c.time >= cutoff)
-            .collect();
-
-        if filtered.is_empty() {
-            (coin.low_24h, coin.high_24h)
-        } else {
-            let lo = filtered.iter().map(|c| c.low).fold(f64::INFINITY, f64::min);
-            let hi = filtered.iter().map(|c| c.high).fold(f64::NEG_INFINITY, f64::max);
-            (lo, hi)
-        }
+        let lo = filtered.iter().map(|c| c.low).fold(f64::INFINITY, f64::min);
+        let hi = filtered.iter().map(|c| c.high).fold(f64::NEG_INFINITY, f64::max);
+        (lo, hi)
     };
 
     let range = high - low;
@@ -181,10 +199,10 @@ fn render_price_and_range(frame: &mut Frame, area: Rect, coin: &CoinData, time_w
         0.5
     };
 
-    let low_label = format!("Low {} ", widgets::format_price(low));
-    let high_label = format!(" High {}", widgets::format_price(high));
+    let low_label = format!("L: {} ", widgets::format_price(low));
+    let high_label = format!(" H: {}", widgets::format_price(high));
 
-    let range_width = cols[1].width as usize;
+    let range_width = cols[2].width as usize;
     let fixed_width = low_label.len() + high_label.len() + 1; // +1 for trailing space
     let bar_width = range_width.saturating_sub(fixed_width).max(3);
 
@@ -203,32 +221,7 @@ fn render_price_and_range(frame: &mut Frame, area: Rect, coin: &CoinData, time_w
         Span::styled(&high_label, Style::default().fg(theme.positive)),
         Span::raw(" "),
     ]);
-    frame.render_widget(Paragraph::new(range_line), cols[1]);
-}
-
-fn render_stats_info(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme) {
-    let (change_str, change_color, arrow) = widgets::format_change(coin.change_24h, theme);
-
-    let lines = vec![
-        Line::from(vec![
-            Span::styled(" 24h Change: ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(change_str, Style::default().fg(change_color)),
-            Span::raw(" "),
-            Span::styled(arrow, Style::default().fg(change_color)),
-        ]),
-        Line::from(vec![
-            Span::styled(" 24h Volume: ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(widgets::format_volume_full(coin.volume_usd, coin.volume_base, &coin.symbol), Style::default().fg(theme.foreground)),
-        ]),
-    ];
-
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(" Stats ")
-        .title_style(Style::default().fg(theme.accent_secondary));
-
-    let paragraph = Paragraph::new(lines).block(block);
-    frame.render_widget(paragraph, area);
+    frame.render_widget(Paragraph::new(range_line), cols[2]);
 }
 
 fn render_indicators(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme) {
@@ -277,6 +270,11 @@ fn render_chart_section(frame: &mut Frame, area: Rect, coin: &CoinData, window: 
             Some(widgets::render_candlestick_chart(frame, area, &coin.candles, window, theme, time_remaining, scroll_offset))
         }
     }
+}
+
+fn render_volume_section(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme, chart_type: ChartType, scroll_offset: isize) {
+    let volume_formatted = widgets::format_volume_full(coin.volume_usd, coin.volume_base, &coin.symbol);
+    widgets::render_volume_chart(frame, area, &coin.candles, &volume_formatted, theme, chart_type == ChartType::Candlestick, scroll_offset);
 }
 
 fn render_footer(frame: &mut Frame, area: Rect, theme: &Theme) {

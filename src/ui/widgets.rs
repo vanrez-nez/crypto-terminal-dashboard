@@ -12,8 +12,55 @@ use ratatui::{
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::api::Candle;
-
 use crate::theme::Theme;
+
+/// Represents the calculated visible range of candles for chart rendering
+pub struct VisibleRange {
+    pub start_idx: usize,
+    pub end_idx: usize,
+    pub empty_right: usize,
+    pub clamped_offset: isize,
+}
+
+/// Calculate which candles should be visible given area width and scroll offset.
+/// This function is shared between candlestick chart and volume sparkline to ensure sync.
+pub fn calculate_visible_range(
+    total_candles: usize,
+    inner_width: usize,
+    chars_per_candle: usize,
+    scroll_offset: isize,
+) -> VisibleRange {
+    let visible_slots = (inner_width / chars_per_candle).max(1);
+
+    // Clamp scroll_offset:
+    // - Left limit: can't scroll past all candles (leave at least 1 visible)
+    // - Right limit: must show at least 2 candles (negative offset = empty space on right)
+    let max_left = (total_candles.saturating_sub(1)) as isize;
+    let max_right = -((visible_slots.saturating_sub(2)) as isize);
+    let clamped_offset = scroll_offset.clamp(max_right, max_left);
+
+    // Calculate which candles to display and empty space on right
+    let (start_idx, end_idx, empty_right) = if clamped_offset >= 0 {
+        // Normal left scroll (viewing history)
+        let offset = clamped_offset as usize;
+        let end = total_candles.saturating_sub(offset);
+        let start = end.saturating_sub(visible_slots);
+        (start, end, 0usize)
+    } else {
+        // Right pan - show fewer candles with empty space on right
+        let right_offset = (-clamped_offset) as usize;
+        let candles_to_show = visible_slots.saturating_sub(right_offset).max(2);
+        let start = total_candles.saturating_sub(candles_to_show);
+        (start, total_candles, right_offset)
+    };
+
+    VisibleRange {
+        start_idx,
+        end_idx,
+        empty_right,
+        clamped_offset,
+    }
+}
 
 /// Calculate color for price based on change compared to historical average
 ///
@@ -242,41 +289,18 @@ pub fn render_candlestick_chart(
         return scroll_offset;
     }
 
-    // Each candle takes ~3 chars width, calculate visible slots
+    // Use shared visible range calculation (3 chars per candle)
     let inner_width = area.width.saturating_sub(2) as usize;
-    let visible_slots = (inner_width / 3).max(1);
-    let total_candles = candles.len();
+    let range = calculate_visible_range(candles.len(), inner_width, 3, scroll_offset);
 
-    // Clamp scroll_offset:
-    // - Left limit: can't scroll past all candles (leave at least 1 visible)
-    // - Right limit: must show at least 2 candles (negative offset = empty space on right)
-    let max_left = (total_candles.saturating_sub(1)) as isize;
-    let max_right = -((visible_slots.saturating_sub(2)) as isize);
-    let scroll_offset = scroll_offset.clamp(max_right, max_left);
-
-    // Calculate which candles to display and empty space on right
-    let (start_idx, end_idx, empty_right) = if scroll_offset >= 0 {
-        // Normal left scroll (viewing history)
-        let offset = scroll_offset as usize;
-        let end = total_candles.saturating_sub(offset);
-        let start = end.saturating_sub(visible_slots);
-        (start, end, 0usize)
-    } else {
-        // Right pan - show fewer candles with empty space on right
-        let right_offset = (-scroll_offset) as usize;
-        let candles_to_show = visible_slots.saturating_sub(right_offset).max(2);
-        let start = total_candles.saturating_sub(candles_to_show);
-        (start, total_candles, right_offset)
-    };
-
-    let display_candles = &candles[start_idx..end_idx];
+    let display_candles = &candles[range.start_idx..range.end_idx];
 
     if display_candles.is_empty() {
-        return scroll_offset;
+        return range.clamped_offset;
     }
 
     let num_candles = display_candles.len();
-    let total_slots = num_candles + empty_right;
+    let total_slots = num_candles + range.empty_right;
 
     // Calculate price bounds for visible candles only (auto-scale)
     let min_price = display_candles.iter().map(|c| c.low).fold(f64::INFINITY, f64::min);
@@ -351,5 +375,122 @@ pub fn render_candlestick_chart(
         });
 
     frame.render_widget(canvas, area);
-    scroll_offset
+    range.clamped_offset
+}
+
+/// Render a volume bar chart.
+/// When use_scroll=true, syncs with candlestick chart scroll position.
+/// When use_scroll=false, shows all candles (for line chart mode).
+/// Bars are colored green (inflow/bullish) or red (outflow/bearish).
+pub fn render_volume_chart(
+    frame: &mut Frame,
+    area: Rect,
+    candles: &[Candle],
+    volume_24h_formatted: &str,
+    theme: &Theme,
+    use_scroll: bool,
+    scroll_offset: isize,
+) {
+    let title = format!(" Volume ({}) ", volume_24h_formatted);
+
+    if candles.is_empty() {
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .title_style(Style::default().fg(theme.foreground_muted));
+        frame.render_widget(block, area);
+        return;
+    }
+
+    let inner_width = area.width.saturating_sub(2) as usize;
+
+    // Determine which candles to display based on mode
+    let (display_candles, empty_right) = if use_scroll {
+        // Candlestick mode: use same visible range calculation (3 chars per candle)
+        let range = calculate_visible_range(candles.len(), inner_width, 3, scroll_offset);
+        (&candles[range.start_idx..range.end_idx], range.empty_right)
+    } else {
+        // Line chart mode: show all candles, no scrolling
+        (&candles[..], 0)
+    };
+
+    if display_candles.is_empty() {
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .title_style(Style::default().fg(theme.accent_secondary));
+        frame.render_widget(block, area);
+        return;
+    }
+
+    // Find max volume for normalization
+    let max_volume = display_candles.iter().map(|c| c.volume).fold(0.0f64, f64::max);
+
+    // Prepare volume data with colors (green for bullish, red for bearish)
+    let volume_data: Vec<(f64, Color)> = display_candles
+        .iter()
+        .map(|c| {
+            let color = if c.close >= c.open {
+                theme.candle_bullish
+            } else {
+                theme.candle_bearish
+            };
+            (c.volume, color)
+        })
+        .collect();
+
+    let num_bars = volume_data.len();
+    let total_slots = num_bars + empty_right;
+
+    // Calculate bar spacing based on mode
+    let bar_unit_width = if use_scroll {
+        // Candlestick mode: fixed 3-unit spacing to match candles
+        3.0
+    } else {
+        // Line chart mode: fill available width
+        (inner_width as f64) / (num_bars as f64).max(1.0)
+    };
+    let bar_width = bar_unit_width * 0.66;
+
+    let canvas = Canvas::default()
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(title)
+                .title_style(Style::default().fg(theme.accent_secondary)),
+        )
+        .marker(Marker::Braille)
+        .x_bounds([0.0, (total_slots as f64) * bar_unit_width])
+        .y_bounds([0.0, max_volume.max(1.0)])
+        .paint(move |ctx| {
+            for (i, (volume, color)) in volume_data.iter().enumerate() {
+                let x_center = (i as f64 * bar_unit_width) + (bar_unit_width / 2.0);
+                let half_width = bar_width / 2.0;
+
+                // Draw volume bar from 0 to volume height (3 vertical lines like candle body)
+                ctx.draw(&Line {
+                    x1: x_center - half_width,
+                    y1: 0.0,
+                    x2: x_center - half_width,
+                    y2: *volume,
+                    color: *color,
+                });
+                ctx.draw(&Line {
+                    x1: x_center,
+                    y1: 0.0,
+                    x2: x_center,
+                    y2: *volume,
+                    color: *color,
+                });
+                ctx.draw(&Line {
+                    x1: x_center + half_width,
+                    y1: 0.0,
+                    x2: x_center + half_width,
+                    y2: *volume,
+                    color: *color,
+                });
+            }
+        });
+
+    frame.render_widget(canvas, area);
 }
