@@ -1,3 +1,5 @@
+use crate::api::Candle;
+
 pub struct CoinData {
     pub symbol: String,
     pub name: String,
@@ -9,7 +11,7 @@ pub struct CoinData {
     pub low_24h: f64,
     pub indicators: IndicatorData,
     pub sparkline: Vec<u64>,
-    pub price_history: Vec<f64>,
+    pub candles: Vec<Candle>,
 }
 
 pub struct IndicatorData {
@@ -56,57 +58,109 @@ impl CoinData {
             low_24h: 0.0,
             indicators: IndicatorData::default(),
             sparkline: vec![50; 20],
-            price_history: Vec::with_capacity(200),
+            candles: Vec::new(),
         }
     }
 
-    /// Add a price to history and recalculate indicators
+    /// Update current price from WebSocket ticker and recalculate indicators
     pub fn update_price(&mut self, price: f64) {
         self.price = price;
-        self.price_history.push(price);
 
-        // Keep last 200 prices
-        if self.price_history.len() > 200 {
-            self.price_history.remove(0);
+        // Update the last candle's close price to current live price
+        // This makes indicators reflect "what if the candle closed now"
+        if let Some(last_candle) = self.candles.last_mut() {
+            last_candle.close = price;
+            // Also update high/low if price exceeds them
+            if price > last_candle.high {
+                last_candle.high = price;
+            }
+            if price < last_candle.low {
+                last_candle.low = price;
+            }
+            // Recalculate indicators with updated candle
+            self.recalculate_indicators();
         }
+    }
 
-        // Update sparkline
-        if self.price_history.len() >= 2 {
-            let prev = self.price_history[self.price_history.len() - 2];
-            if prev > 0.0 {
-                let normalized = ((price / prev) * 50.0) as u64;
-                self.sparkline.remove(0);
-                self.sparkline.push(normalized.clamp(20, 80));
+    /// Set candles from historical data and recalculate indicators
+    pub fn set_candles(&mut self, candles: Vec<Candle>) {
+        self.candles = candles;
+        self.recalculate_indicators();
+        self.update_sparkline();
+
+        // Update current price from latest candle if available
+        if let Some(last) = self.candles.last() {
+            if self.price == 0.0 {
+                self.price = last.close;
             }
         }
-
-        self.recalculate_indicators();
     }
 
     fn recalculate_indicators(&mut self) {
-        let prices = &self.price_history;
-        if prices.len() < 2 {
+        // Extract close prices from candles
+        let closes: Vec<f64> = self.candles.iter().map(|c| c.close).collect();
+
+        if closes.len() < 2 {
             return;
         }
 
-        // Calculate EMAs
-        self.indicators.ema_9 = Self::calculate_ema(prices, 9);
-        self.indicators.ema_21 = Self::calculate_ema(prices, 21);
+        // Calculate EMAs (7, 25, 99)
+        self.indicators.ema_7 = Self::calculate_ema(&closes, 7);
+        self.indicators.ema_25 = Self::calculate_ema(&closes, 25);
+        self.indicators.ema_99 = Self::calculate_ema(&closes, 99);
 
-        // Calculate RSI (14 periods)
-        self.indicators.rsi = Self::calculate_rsi(prices, 14);
+        // Calculate RSIs (6, 12, 24)
+        self.indicators.rsi_6 = Self::calculate_rsi(&closes, 6);
+        self.indicators.rsi_12 = Self::calculate_rsi(&closes, 12);
+        self.indicators.rsi_24 = Self::calculate_rsi(&closes, 24);
 
         // Calculate MACD (12, 26, 9)
-        let ema_12 = Self::calculate_ema(prices, 12);
-        let ema_26 = Self::calculate_ema(prices, 26);
+        let ema_12 = Self::calculate_ema(&closes, 12);
+        let ema_26 = Self::calculate_ema(&closes, 26);
         self.indicators.macd_line = ema_12 - ema_26;
 
-        // For signal line, we'd need MACD history - approximate with current
-        // In a real implementation, we'd track MACD history separately
-        let macd_smoothing = 2.0 / 10.0; // 9-period smoothing
+        // Calculate MACD signal line (9-period EMA of MACD line)
+        // For proper calculation, we'd need MACD history, but approximate with smoothing
+        let macd_smoothing = 2.0 / 10.0;
         self.indicators.macd_signal = self.indicators.macd_signal * (1.0 - macd_smoothing)
             + self.indicators.macd_line * macd_smoothing;
         self.indicators.macd_histogram = self.indicators.macd_line - self.indicators.macd_signal;
+    }
+
+    fn update_sparkline(&mut self) {
+        if self.candles.len() < 2 {
+            return;
+        }
+
+        // Take last 20 candles for sparkline
+        let candles_to_use: Vec<&Candle> = self.candles.iter().rev().take(20).collect();
+        if candles_to_use.len() < 2 {
+            return;
+        }
+
+        // Find min and max close prices
+        let closes: Vec<f64> = candles_to_use.iter().map(|c| c.close).collect();
+        let min = closes.iter().cloned().fold(f64::INFINITY, f64::min);
+        let max = closes.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let range = if max > min { max - min } else { 1.0 };
+
+        // Normalize to 20-80 range
+        self.sparkline = closes
+            .iter()
+            .rev() // Reverse back to chronological order
+            .map(|&price| {
+                let normalized = ((price - min) / range) * 60.0 + 20.0;
+                normalized.clamp(20.0, 80.0) as u64
+            })
+            .collect();
+
+        // Ensure we have exactly 20 points
+        while self.sparkline.len() < 20 {
+            self.sparkline.insert(0, 50);
+        }
+        if self.sparkline.len() > 20 {
+            self.sparkline = self.sparkline[self.sparkline.len() - 20..].to_vec();
+        }
     }
 
     fn calculate_ema(prices: &[f64], period: usize) -> f64 {
@@ -131,33 +185,72 @@ impl CoinData {
         ema
     }
 
+    /// Calculate RSI using Wilder's smoothed moving average
+    /// This matches the RSI calculation used by Binance and other trading platforms
     fn calculate_rsi(prices: &[f64], period: usize) -> f64 {
         if prices.len() < period + 1 {
             return 50.0; // Neutral RSI when not enough data
         }
 
-        let mut gains = 0.0;
-        let mut losses = 0.0;
-        let start = prices.len().saturating_sub(period + 1);
+        // Calculate price changes
+        let changes: Vec<f64> = prices.windows(2).map(|w| w[1] - w[0]).collect();
 
-        for i in (start + 1)..prices.len() {
-            let change = prices[i] - prices[i - 1];
-            if change > 0.0 {
-                gains += change;
-            } else {
-                losses -= change; // Make positive
-            }
+        if changes.len() < period {
+            return 50.0;
         }
 
-        let avg_gain = gains / period as f64;
-        let avg_loss = losses / period as f64;
+        // First average: SMA of first `period` changes
+        let mut avg_gain: f64 = changes[..period]
+            .iter()
+            .filter(|&&c| c > 0.0)
+            .sum::<f64>()
+            / period as f64;
 
+        let mut avg_loss: f64 = changes[..period]
+            .iter()
+            .filter(|&&c| c < 0.0)
+            .map(|c| c.abs())
+            .sum::<f64>()
+            / period as f64;
+
+        // Apply Wilder's smoothing for remaining changes
+        // Formula: avg = (prev_avg * (period - 1) + current) / period
+        for change in &changes[period..] {
+            let gain = if *change > 0.0 { *change } else { 0.0 };
+            let loss = if *change < 0.0 { change.abs() } else { 0.0 };
+
+            avg_gain = (avg_gain * (period - 1) as f64 + gain) / period as f64;
+            avg_loss = (avg_loss * (period - 1) as f64 + loss) / period as f64;
+        }
+
+        // Calculate RSI
         if avg_loss == 0.0 {
             return 100.0;
         }
 
         let rs = avg_gain / avg_loss;
         100.0 - (100.0 / (1.0 + rs))
+    }
+
+    /// Get price data points for chart: Vec<(x, y)> where x is index, y is close price
+    pub fn chart_data(&self) -> Vec<(f64, f64)> {
+        self.candles
+            .iter()
+            .enumerate()
+            .map(|(i, c)| (i as f64, c.close))
+            .collect()
+    }
+
+    /// Get min/max price for Y-axis bounds with padding
+    pub fn price_bounds(&self) -> (f64, f64) {
+        if self.candles.is_empty() {
+            return (0.0, 100.0);
+        }
+        let closes: Vec<f64> = self.candles.iter().map(|c| c.close).collect();
+        let min = closes.iter().cloned().fold(f64::INFINITY, f64::min);
+        let max = closes.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        // Add 0.5% padding
+        (min * 0.995, max * 1.005)
     }
 }
 
@@ -173,19 +266,18 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
             high_24h: 68102.00,
             low_24h: 65201.00,
             indicators: IndicatorData {
-                rsi: 58.3,
-                ema_9: 67102.00,
-                ema_21: 66430.00,
-                ema_50: 64200.00,
-                sma_20: 66800.00,
-                sma_50: 65500.00,
-                sma_200: 61000.00,
+                rsi_6: 62.5,
+                rsi_12: 58.3,
+                rsi_24: 55.1,
+                ema_7: 67200.00,
+                ema_25: 66430.00,
+                ema_99: 64200.00,
                 macd_line: 12.4,
                 macd_signal: 8.2,
                 macd_histogram: 4.2,
             },
             sparkline: vec![65, 66, 64, 67, 68, 70, 69, 71, 72, 70, 68, 69, 71, 73, 72, 70, 68, 69, 70, 72],
-            price_history: vec![65000.0, 65500.0, 66000.0, 66200.0, 66800.0, 67000.0, 67200.0, 67432.10],
+            candles: Vec::new(),
         },
         CoinData {
             symbol: "ETH".to_string(),
@@ -197,19 +289,18 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
             high_24h: 3612.30,
             low_24h: 3480.10,
             indicators: IndicatorData {
-                rsi: 42.1,
-                ema_9: 3540.00,
-                ema_21: 3580.00,
-                ema_50: 3620.00,
-                sma_20: 3560.00,
-                sma_50: 3600.00,
-                sma_200: 3400.00,
+                rsi_6: 38.2,
+                rsi_12: 42.1,
+                rsi_24: 45.5,
+                ema_7: 3530.00,
+                ema_25: 3560.00,
+                ema_99: 3480.00,
                 macd_line: -5.1,
                 macd_signal: -3.2,
                 macd_histogram: -1.9,
             },
             sparkline: vec![72, 70, 68, 66, 65, 64, 62, 63, 65, 67, 69, 71, 73, 72, 70, 68, 66, 64, 65, 67],
-            price_history: vec![3600.0, 3580.0, 3560.0, 3540.0, 3520.0, 3510.0, 3515.0, 3521.45],
+            candles: Vec::new(),
         },
         CoinData {
             symbol: "SOL".to_string(),
@@ -221,19 +312,18 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
             high_24h: 145.00,
             low_24h: 135.00,
             indicators: IndicatorData {
-                rsi: 65.2,
-                ema_9: 140.50,
-                ema_21: 138.00,
-                ema_50: 132.00,
-                sma_20: 139.00,
-                sma_50: 135.00,
-                sma_200: 120.00,
+                rsi_6: 72.1,
+                rsi_12: 65.2,
+                rsi_24: 60.8,
+                ema_7: 141.50,
+                ema_25: 138.00,
+                ema_99: 128.00,
                 macd_line: 3.2,
                 macd_signal: 2.1,
                 macd_histogram: 1.1,
             },
             sparkline: vec![55, 58, 60, 63, 65, 68, 70, 72, 75, 73, 71, 74, 76, 78, 80, 82, 80, 78, 76, 75],
-            price_history: vec![135.0, 137.0, 139.0, 140.0, 141.0, 142.0, 142.5, 142.33],
+            candles: Vec::new(),
         },
         CoinData {
             symbol: "XRP".to_string(),
@@ -245,19 +335,18 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
             high_24h: 0.53,
             low_24h: 0.51,
             indicators: IndicatorData {
-                rsi: 48.7,
-                ema_9: 0.52,
-                ema_21: 0.51,
-                ema_50: 0.50,
-                sma_20: 0.52,
-                sma_50: 0.51,
-                sma_200: 0.48,
+                rsi_6: 52.3,
+                rsi_12: 48.7,
+                rsi_24: 50.2,
+                ema_7: 0.522,
+                ema_25: 0.518,
+                ema_99: 0.505,
                 macd_line: 0.005,
                 macd_signal: 0.003,
                 macd_histogram: 0.002,
             },
             sparkline: vec![50, 51, 52, 51, 50, 49, 50, 51, 52, 53, 52, 51, 50, 51, 52, 53, 54, 53, 52, 51],
-            price_history: vec![0.51, 0.515, 0.52, 0.518, 0.522, 0.525, 0.523, 0.5234],
+            candles: Vec::new(),
         },
         CoinData {
             symbol: "ADA".to_string(),
@@ -269,29 +358,34 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
             high_24h: 0.46,
             low_24h: 0.44,
             indicators: IndicatorData {
-                rsi: 51.2,
-                ema_9: 0.45,
-                ema_21: 0.45,
-                ema_50: 0.44,
-                sma_20: 0.45,
-                sma_50: 0.44,
-                sma_200: 0.42,
+                rsi_6: 48.5,
+                rsi_12: 51.2,
+                rsi_24: 49.8,
+                ema_7: 0.452,
+                ema_25: 0.450,
+                ema_99: 0.445,
                 macd_line: -0.002,
                 macd_signal: -0.001,
                 macd_histogram: -0.001,
             },
             sparkline: vec![46, 45, 44, 45, 46, 45, 44, 43, 44, 45, 46, 45, 44, 45, 46, 47, 46, 45, 44, 45],
-            price_history: vec![0.455, 0.453, 0.451, 0.452, 0.450, 0.451, 0.452, 0.4521],
+            candles: Vec::new(),
         },
     ]
 }
 
-/// Create coins from pairs list (e.g., ["BTC-USD", "ETH-USD"])
+/// Create coins from pairs list
+/// Supports both formats: "BTC-USD" (Coinbase) and "BTCUSDT" (Binance)
 pub fn coins_from_pairs(pairs: &[String]) -> Vec<CoinData> {
     pairs
         .iter()
         .map(|pair| {
-            let symbol = pair.split('-').next().unwrap_or(pair);
+            // Handle both "BTC-USD" and "BTCUSDT" formats
+            let symbol = if pair.contains('-') {
+                pair.split('-').next().unwrap_or(pair)
+            } else {
+                pair.trim_end_matches("USDT")
+            };
             let name = symbol_to_name(symbol);
             CoinData::new(symbol, &name)
         })

@@ -16,6 +16,53 @@ pub enum ConnectionStatus {
     Mock,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TimeWindow {
+    Min15,
+    Hour1,
+    Hour4,
+    Day1,
+}
+
+impl TimeWindow {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TimeWindow::Min15 => "15m",
+            TimeWindow::Hour1 => "1h",
+            TimeWindow::Hour4 => "4h",
+            TimeWindow::Day1 => "1d",
+        }
+    }
+
+    pub fn next(&self) -> Self {
+        match self {
+            TimeWindow::Min15 => TimeWindow::Hour1,
+            TimeWindow::Hour1 => TimeWindow::Hour4,
+            TimeWindow::Hour4 => TimeWindow::Day1,
+            TimeWindow::Day1 => TimeWindow::Min15,
+        }
+    }
+
+    pub fn prev(&self) -> Self {
+        match self {
+            TimeWindow::Min15 => TimeWindow::Day1,
+            TimeWindow::Hour1 => TimeWindow::Min15,
+            TimeWindow::Hour4 => TimeWindow::Hour1,
+            TimeWindow::Day1 => TimeWindow::Hour4,
+        }
+    }
+
+    /// Returns the Coinbase API granularity in seconds for this time window
+    pub fn granularity(&self) -> u32 {
+        match self {
+            TimeWindow::Min15 => 900,   // 15 minutes
+            TimeWindow::Hour1 => 3600,  // 1 hour
+            TimeWindow::Hour4 => 21600, // 6 hours (closest to 4h available)
+            TimeWindow::Day1 => 86400,  // 1 day
+        }
+    }
+}
+
 pub struct App {
     pub view: View,
     pub coins: Vec<CoinData>,
@@ -25,6 +72,8 @@ pub struct App {
     pub theme: Theme,
     pub connection_status: ConnectionStatus,
     pub provider: String,
+    pub time_window: TimeWindow,
+    pub needs_candle_refresh: bool,
 }
 
 impl App {
@@ -44,7 +93,15 @@ impl App {
                 ConnectionStatus::Connecting
             },
             provider: provider.to_string(),
+            time_window: TimeWindow::Hour1,
+            needs_candle_refresh: true, // Fetch candles on startup
         }
+    }
+
+    /// Cycle to the next time window. Sets flag to trigger candle refetch.
+    pub fn cycle_window(&mut self) {
+        self.time_window = self.time_window.next();
+        self.needs_candle_refresh = true;
     }
 
     pub fn quit(&mut self) {
@@ -127,6 +184,11 @@ impl App {
             }
             PriceUpdate::Disconnected => {
                 self.connection_status = ConnectionStatus::Disconnected;
+            }
+            PriceUpdate::Candles { symbol, candles } => {
+                if let Some(coin) = self.coins.iter_mut().find(|c| c.symbol == symbol) {
+                    coin.set_candles(candles);
+                }
             }
             PriceUpdate::Error(_) => {
                 // Could log the error or show it in UI

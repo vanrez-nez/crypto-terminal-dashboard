@@ -15,7 +15,7 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc;
 
-use api::coinbase::CoinbaseProvider;
+use api::binance::{fetch_candles, granularity_to_interval, BinanceProvider};
 use api::PriceUpdate;
 use app::App;
 use config::Config;
@@ -38,9 +38,12 @@ async fn main() -> io::Result<()> {
     // Create channel for price updates
     let (tx, mut rx) = mpsc::channel::<PriceUpdate>(100);
 
+    // Create channel for candle fetch requests (product_id, granularity)
+    let (candle_req_tx, mut candle_req_rx) = mpsc::channel::<(String, u32)>(32);
+
     // Determine provider
     let provider = config.provider();
-    let use_live = provider == "coinbase";
+    let use_live = provider == "binance";
 
     // Create app with appropriate data source
     let coins = if use_live {
@@ -52,14 +55,33 @@ async fn main() -> io::Result<()> {
 
     // Spawn WebSocket task if using live data
     if use_live {
-        let provider = CoinbaseProvider::new(pairs);
+        let ws_provider = BinanceProvider::new(pairs.clone());
+        let ws_tx = tx.clone();
         tokio::spawn(async move {
-            provider.run(tx).await;
+            ws_provider.run(ws_tx).await;
+        });
+
+        // Spawn candle fetcher task
+        let candle_tx = tx.clone();
+        tokio::spawn(async move {
+            while let Some((symbol, granularity)) = candle_req_rx.recv().await {
+                let interval = granularity_to_interval(granularity);
+                match fetch_candles(&symbol, interval).await {
+                    Ok(candles) => {
+                        // Extract symbol (e.g., "BTCUSDT" -> "BTC")
+                        let sym = symbol.trim_end_matches("USDT").to_string();
+                        let _ = candle_tx.send(PriceUpdate::Candles { symbol: sym, candles }).await;
+                    }
+                    Err(e) => {
+                        let _ = candle_tx.send(PriceUpdate::Error(format!("Candle fetch error: {}", e))).await;
+                    }
+                }
+            }
         });
     }
 
     // Main loop
-    let result = run_app(&mut terminal, &mut app, &mut rx).await;
+    let result = run_app(&mut terminal, &mut app, &mut rx, candle_req_tx, &pairs).await;
 
     // Restore terminal
     disable_raw_mode()?;
@@ -73,8 +95,19 @@ async fn run_app(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     app: &mut App,
     rx: &mut mpsc::Receiver<PriceUpdate>,
+    candle_req_tx: mpsc::Sender<(String, u32)>,
+    pairs: &[String],
 ) -> io::Result<()> {
     while app.running {
+        // Check if we need to fetch candles (startup or window change)
+        if app.needs_candle_refresh {
+            app.needs_candle_refresh = false;
+            let granularity = app.time_window.granularity();
+            for pair in pairs {
+                let _ = candle_req_tx.send((pair.clone(), granularity)).await;
+            }
+        }
+
         // Process all pending price updates (non-blocking)
         while let Ok(update) = rx.try_recv() {
             app.handle_update(update);

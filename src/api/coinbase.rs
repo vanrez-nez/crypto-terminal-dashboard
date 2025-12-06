@@ -4,9 +4,10 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
-use super::PriceUpdate;
+use super::{Candle, PriceUpdate};
 
 const COINBASE_WS_URL: &str = "wss://ws-feed.exchange.coinbase.com";
+const COINBASE_REST_URL: &str = "https://api.exchange.coinbase.com";
 
 #[derive(Serialize)]
 struct SubscribeMessage {
@@ -138,5 +139,49 @@ impl CoinbaseProvider {
             high_24h,
             low_24h,
         })
+    }
+}
+
+/// Fetch historical candle data from Coinbase REST API
+/// Returns candles in chronological order (oldest first)
+pub async fn fetch_candles(product_id: &str, granularity: u32) -> anyhow::Result<Vec<Candle>> {
+    let url = format!(
+        "{}/products/{}/candles?granularity={}",
+        COINBASE_REST_URL, product_id, granularity
+    );
+
+    let resp = reqwest::get(&url).await?;
+    let data: Vec<Vec<serde_json::Value>> = resp.json().await?;
+
+    // Coinbase returns [time, low, high, open, close, volume] arrays
+    // Data comes in reverse chronological order, so we reverse it
+    let mut candles: Vec<Candle> = data
+        .iter()
+        .filter_map(|c| {
+            if c.len() < 6 {
+                return None;
+            }
+            Some(Candle {
+                time: c[0].as_i64().unwrap_or(0),
+                low: parse_number(&c[1]),
+                high: parse_number(&c[2]),
+                open: parse_number(&c[3]),
+                close: parse_number(&c[4]),
+                volume: parse_number(&c[5]),
+            })
+        })
+        .collect();
+
+    // Reverse to get chronological order (oldest first)
+    candles.reverse();
+    Ok(candles)
+}
+
+/// Parse a JSON value as f64 (handles both string and number formats)
+fn parse_number(val: &serde_json::Value) -> f64 {
+    match val {
+        serde_json::Value::Number(n) => n.as_f64().unwrap_or(0.0),
+        serde_json::Value::String(s) => s.parse().unwrap_or(0.0),
+        _ => 0.0,
     }
 }

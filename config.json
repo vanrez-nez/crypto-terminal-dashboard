@@ -14,7 +14,12 @@
     }
   },
   "api": {
-    "provider": "coinbase"
+    "provider": "binance"
   },
-  "pairs": ["BTC-USD", "ETH-USD", "SOL-USD"]
+  "pairs": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+  "indicators": {
+    "ema_periods": [7, 25, 99],
+    "rsi_periods": [6, 12, 24],
+    "default_window": "1h"
+  }
 }

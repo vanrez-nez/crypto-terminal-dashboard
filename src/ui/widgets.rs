@@ -1,6 +1,10 @@
 use ratatui::{
-    style::{Color, Style},
+    layout::Rect,
+    style::{Color, Modifier, Style},
+    symbols::Marker,
     text::{Line, Span},
+    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType},
+    Frame,
 };
 
 use crate::theme::Theme;
@@ -125,4 +129,78 @@ fn format_base_volume(volume: f64) -> String {
     } else {
         format!("{:.0}", volume)
     }
+}
+
+/// Render a price chart using ratatui's Chart widget
+pub fn render_price_chart(
+    frame: &mut Frame,
+    area: Rect,
+    data: &[(f64, f64)],
+    bounds: (f64, f64),
+    window: &str,
+    theme: &Theme,
+) {
+    if data.is_empty() {
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(format!(" Price ({}) - No data ", window))
+            .title_style(Style::default().fg(theme.foreground_muted));
+        frame.render_widget(block, area);
+        return;
+    }
+
+    let dataset = Dataset::default()
+        .marker(Marker::Braille)
+        .graph_type(GraphType::Line)
+        .style(Style::default().fg(theme.accent))
+        .data(data);
+
+    let title = format!(" Price ({}) ", window);
+    let x_max = data.len() as f64;
+
+    // Format Y-axis labels based on price magnitude
+    let y_labels = create_y_labels(bounds.0, bounds.1);
+
+    let chart = Chart::new(vec![dataset])
+        .block(
+            Block::default()
+                .title(title)
+                .title_style(Style::default().fg(theme.accent_secondary).add_modifier(Modifier::BOLD))
+                .borders(Borders::ALL),
+        )
+        .x_axis(
+            Axis::default()
+                .style(Style::default().fg(theme.foreground_muted))
+                .bounds([0.0, x_max]),
+        )
+        .y_axis(
+            Axis::default()
+                .style(Style::default().fg(theme.foreground_muted))
+                .labels(y_labels)
+                .bounds([bounds.0, bounds.1]),
+        );
+
+    frame.render_widget(chart, area);
+}
+
+/// Create Y-axis labels for the price chart
+fn create_y_labels(min: f64, max: f64) -> Vec<Span<'static>> {
+    let format_price_label = |price: f64| -> String {
+        if price >= 10000.0 {
+            format!("${:.0}k", price / 1000.0)
+        } else if price >= 1000.0 {
+            format!("${:.1}k", price / 1000.0)
+        } else if price >= 1.0 {
+            format!("${:.2}", price)
+        } else {
+            format!("${:.4}", price)
+        }
+    };
+
+    let mid = (min + max) / 2.0;
+    vec![
+        Span::raw(format_price_label(min)),
+        Span::raw(format_price_label(mid)),
+        Span::raw(format_price_label(max)),
+    ]
 }

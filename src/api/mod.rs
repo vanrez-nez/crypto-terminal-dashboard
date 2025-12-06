@@ -1,9 +1,21 @@
+pub mod binance;
 pub mod coinbase;
 
-/// Price update message from WebSocket
+/// OHLC candle data
+#[derive(Debug, Clone)]
+pub struct Candle {
+    pub time: i64,
+    pub open: f64,
+    pub high: f64,
+    pub low: f64,
+    pub close: f64,
+    pub volume: f64,
+}
+
+/// Price update message from WebSocket or REST API
 #[derive(Debug, Clone)]
 pub enum PriceUpdate {
-    /// Real-time price update
+    /// Real-time price update from WebSocket
     Ticker {
         symbol: String,
         price: f64,
@@ -12,6 +24,11 @@ pub enum PriceUpdate {
         volume_24h_base: f64,
         high_24h: f64,
         low_24h: f64,
+    },
+    /// Historical candle data from REST API
+    Candles {
+        symbol: String,
+        candles: Vec<Candle>,
     },
     /// Connection status change
     Connected,

@@ -20,6 +20,7 @@ fn handle_key(app: &mut App, key: KeyEvent) {
         KeyCode::Down | KeyCode::Char('j') => app.move_down(),
         KeyCode::Char(' ') => app.toggle_selection(),
         KeyCode::Enter | KeyCode::Tab => app.switch_view(),
+        KeyCode::Char('w') => app.cycle_window(),
         KeyCode::Char('r') => {} // Future refresh - no-op for now
         _ => {}
     }

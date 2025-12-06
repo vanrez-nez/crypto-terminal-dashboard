@@ -32,16 +32,20 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
     };
 
     let provider_display = capitalize(&app.provider);
+    let window_display = app.time_window.as_str();
     let header = Paragraph::new(Line::from(vec![
         Span::styled("  [Tab: ", Style::default().fg(theme.foreground_inactive)),
         Span::styled("Overview", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
         Span::styled("]  [", Style::default().fg(theme.foreground_inactive)),
         Span::styled("Details", Style::default().fg(theme.foreground_inactive)),
         Span::styled("]", Style::default().fg(theme.foreground_inactive)),
-        Span::raw("          "),
+        Span::raw("    "),
         Span::styled("Provider: ", Style::default().fg(theme.foreground_muted)),
         Span::styled(&provider_display, Style::default().fg(theme.foreground)),
-        Span::raw("          "),
+        Span::raw("    "),
+        Span::styled("[w] Window: ", Style::default().fg(theme.foreground_muted)),
+        Span::styled(window_display, Style::default().fg(theme.accent)),
+        Span::raw("    "),
         Span::styled(status_text, Style::default().fg(status_color)),
     ]))
     .block(

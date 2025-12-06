@@ -35,16 +35,20 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
     };
 
     let provider_display = capitalize(&app.provider);
+    let window_display = app.time_window.as_str();
     let header = Paragraph::new(Line::from(vec![
         Span::styled("  [", Style::default().fg(theme.foreground_inactive)),
         Span::styled("Overview", Style::default().fg(theme.foreground_inactive)),
         Span::styled("]  [Tab: ", Style::default().fg(theme.foreground_inactive)),
         Span::styled("Details", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
         Span::styled("]", Style::default().fg(theme.foreground_inactive)),
-        Span::raw("          "),
+        Span::raw("    "),
         Span::styled("Provider: ", Style::default().fg(theme.foreground_muted)),
         Span::styled(&provider_display, Style::default().fg(theme.foreground)),
-        Span::raw("          "),
+        Span::raw("    "),
+        Span::styled("[w] Window: ", Style::default().fg(theme.foreground_muted)),
+        Span::styled(window_display, Style::default().fg(theme.accent)),
+        Span::raw("    "),
         Span::styled(status_text, Style::default().fg(status_color)),
     ]))
     .block(
@@ -74,22 +78,23 @@ fn render_content(frame: &mut Frame, area: Rect, app: &App) {
 
     let columns = Layout::horizontal(constraints).split(area);
 
+    let window = app.time_window.as_str();
     for (i, coin) in selected.iter().enumerate() {
-        render_coin_panel(frame, columns[i], coin, &app.theme);
+        render_coin_panel(frame, columns[i], coin, window, &app.theme);
     }
 }
 
-fn render_coin_panel(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme) {
+fn render_coin_panel(frame: &mut Frame, area: Rect, coin: &CoinData, window: &str, theme: &Theme) {
     let chunks = Layout::vertical([
         Constraint::Length(8),  // Price info
         Constraint::Length(8),  // Indicators
-        Constraint::Min(3),     // Sparkline
+        Constraint::Min(8),     // Chart (increased for proper display)
     ])
     .split(area);
 
     render_price_info(frame, chunks[0], coin, theme);
     render_indicators(frame, chunks[1], coin, theme);
-    render_sparkline_section(frame, chunks[2], coin, theme);
+    render_chart_section(frame, chunks[2], coin, window, theme);
 }
 
 fn render_price_info(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme) {
@@ -135,33 +140,41 @@ fn render_price_info(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &The
 
 fn render_indicators(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme) {
     let ind = &coin.indicators;
-    let (rsi_str, rsi_color) = widgets::format_rsi(ind.rsi, theme);
+    let (rsi6_str, rsi6_color) = widgets::format_rsi(ind.rsi_6, theme);
+    let (rsi12_str, rsi12_color) = widgets::format_rsi(ind.rsi_12, theme);
+    let (rsi24_str, rsi24_color) = widgets::format_rsi(ind.rsi_24, theme);
     let macd_parts = widgets::format_macd(ind.macd_line, ind.macd_signal, ind.macd_histogram, theme);
 
     let lines = vec![
+        // RSI row - all three on one line
         Line::from(vec![
-            Span::styled("RSI(14):  ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(rsi_str, Style::default().fg(rsi_color)),
-            Span::styled(" ●", Style::default().fg(rsi_color)),
+            Span::styled("RSI: ", Style::default().fg(theme.foreground_muted)),
+            Span::styled(format!("6:{}", rsi6_str), Style::default().fg(rsi6_color)),
+            Span::raw("  "),
+            Span::styled(format!("12:{}", rsi12_str), Style::default().fg(rsi12_color)),
+            Span::raw("  "),
+            Span::styled(format!("24:{}", rsi24_str), Style::default().fg(rsi24_color)),
+        ]),
+        // EMA values
+        Line::from(vec![
+            Span::styled("EMA(7):   ", Style::default().fg(theme.foreground_muted)),
+            Span::styled(widgets::format_price(ind.ema_7), Style::default().fg(theme.foreground)),
         ]),
         Line::from(vec![
-            Span::styled("EMA(9):   ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(widgets::format_price(ind.ema_9), Style::default().fg(theme.foreground)),
+            Span::styled("EMA(25):  ", Style::default().fg(theme.foreground_muted)),
+            Span::styled(widgets::format_price(ind.ema_25), Style::default().fg(theme.foreground)),
         ]),
         Line::from(vec![
-            Span::styled("EMA(21):  ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(widgets::format_price(ind.ema_21), Style::default().fg(theme.foreground)),
+            Span::styled("EMA(99):  ", Style::default().fg(theme.foreground_muted)),
+            Span::styled(widgets::format_price(ind.ema_99), Style::default().fg(theme.foreground)),
         ]),
+        // MACD
         Line::from(vec![
             Span::styled("MACD:     ", Style::default().fg(theme.foreground_muted)),
             Span::styled(macd_parts[0].0.clone(), Style::default().fg(macd_parts[0].1)),
-        ]),
-        Line::from(vec![
-            Span::styled("Signal:   ", Style::default().fg(theme.foreground_muted)),
+            Span::raw(" / "),
             Span::styled(macd_parts[1].0.clone(), Style::default().fg(macd_parts[1].1)),
-        ]),
-        Line::from(vec![
-            Span::styled("Hist:     ", Style::default().fg(theme.foreground_muted)),
+            Span::raw(" / "),
             Span::styled(macd_parts[2].0.clone(), Style::default().fg(macd_parts[2].1)),
         ]),
     ];
@@ -175,17 +188,10 @@ fn render_indicators(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &The
     frame.render_widget(paragraph, area);
 }
 
-fn render_sparkline_section(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme) {
-    let inner_width = area.width.saturating_sub(2) as usize;
-    let sparkline = widgets::render_sparkline(&coin.sparkline, inner_width, theme);
-
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .title(" 24h Price ")
-        .title_style(Style::default().fg(theme.foreground_muted));
-
-    let paragraph = Paragraph::new(sparkline).block(block);
-    frame.render_widget(paragraph, area);
+fn render_chart_section(frame: &mut Frame, area: Rect, coin: &CoinData, window: &str, theme: &Theme) {
+    let data = coin.chart_data();
+    let bounds = coin.price_bounds();
+    widgets::render_price_chart(frame, area, &data, bounds, window, theme);
 }
 
 fn render_footer(frame: &mut Frame, area: Rect, theme: &Theme) {
