@@ -32,6 +32,7 @@ struct TickerData {
 
 #[derive(Deserialize, Debug)]
 struct StreamMessage {
+    #[allow(dead_code)]
     stream: String,
     data: TickerData,
 }
@@ -109,7 +110,7 @@ impl BinanceProvider {
         let data = msg.data;
 
         let price: f64 = data.close_price.parse().ok()?;
-        let open_24h: f64 = data.open_price.parse().ok().unwrap_or(0.0);
+        let _open_24h: f64 = data.open_price.parse().ok().unwrap_or(0.0);
         let high_24h: f64 = data.high_price.parse().ok().unwrap_or(0.0);
         let low_24h: f64 = data.low_price.parse().ok().unwrap_or(0.0);
         let volume_base: f64 = data.base_volume.parse().ok().unwrap_or(0.0);

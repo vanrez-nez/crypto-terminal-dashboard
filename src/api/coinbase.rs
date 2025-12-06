@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;

@@ -5,6 +5,7 @@ const CHANGE_HISTORY_SIZE: usize = 50;  // Number of samples to average
 
 pub struct CoinData {
     pub symbol: String,
+    #[allow(dead_code)]
     pub name: String,
     pub price: f64,
     pub prev_price: f64,           // Previous price for change detection

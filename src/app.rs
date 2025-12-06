@@ -43,15 +43,6 @@ impl TimeWindow {
         }
     }
 
-    pub fn prev(&self) -> Self {
-        match self {
-            TimeWindow::Min15 => TimeWindow::Day1,
-            TimeWindow::Hour1 => TimeWindow::Min15,
-            TimeWindow::Hour4 => TimeWindow::Hour1,
-            TimeWindow::Day1 => TimeWindow::Hour4,
-        }
-    }
-
     /// Returns the Coinbase API granularity in seconds for this time window
     pub fn granularity(&self) -> u32 {
         match self {

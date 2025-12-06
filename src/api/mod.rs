@@ -3,6 +3,7 @@ pub mod coinbase;
 
 /// OHLC candle data
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Candle {
     pub time: i64,
     pub open: f64,
@@ -34,5 +35,6 @@ pub enum PriceUpdate {
     Connected,
     Disconnected,
     /// Error message
+    #[allow(dead_code)]
     Error(String),
 }
