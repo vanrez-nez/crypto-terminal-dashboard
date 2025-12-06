@@ -108,15 +108,16 @@ fn render_coin_panel(frame: &mut Frame, area: Rect, coin: &CoinData, window: &st
     let chunks = Layout::vertical([
         Constraint::Length(3),  // Price box
         Constraint::Length(7),  // Stats info
-        Constraint::Length(4),  // Indicators (2 rows + 2 borders)
         Constraint::Min(8),     // Chart
+        Constraint::Length(4),  // Indicators (2 rows + 2 borders)
     ])
     .split(area);
 
     render_price_box(frame, chunks[0], coin, theme);
     render_stats_info(frame, chunks[1], coin, theme);
-    render_indicators(frame, chunks[2], coin, theme);
-    render_chart_section(frame, chunks[3], coin, window, theme, chart_type, granularity, scroll_offset)
+    let result = render_chart_section(frame, chunks[2], coin, window, theme, chart_type, granularity, scroll_offset);
+    render_indicators(frame, chunks[3], coin, theme);
+    result
 }
 
 fn render_price_box(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme) {
@@ -159,21 +160,21 @@ fn render_stats_info(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &The
 
     let lines = vec![
         Line::from(vec![
-            Span::styled("24h Change: ", Style::default().fg(theme.foreground_muted)),
+            Span::styled(" 24h Change: ", Style::default().fg(theme.foreground_muted)),
             Span::styled(change_str, Style::default().fg(change_color)),
             Span::raw(" "),
             Span::styled(arrow, Style::default().fg(change_color)),
         ]),
         Line::from(vec![
-            Span::styled("24h Volume: ", Style::default().fg(theme.foreground_muted)),
+            Span::styled(" 24h Volume: ", Style::default().fg(theme.foreground_muted)),
             Span::styled(widgets::format_volume_full(coin.volume_usd, coin.volume_base, &coin.symbol), Style::default().fg(theme.foreground)),
         ]),
         Line::from(vec![
-            Span::styled("24h High:   ", Style::default().fg(theme.foreground_muted)),
+            Span::styled(" 24h High:   ", Style::default().fg(theme.foreground_muted)),
             Span::styled(widgets::format_price(coin.high_24h), Style::default().fg(theme.positive)),
         ]),
         Line::from(vec![
-            Span::styled("24h Low:    ", Style::default().fg(theme.foreground_muted)),
+            Span::styled(" 24h Low:    ", Style::default().fg(theme.foreground_muted)),
             Span::styled(widgets::format_price(coin.low_24h), Style::default().fg(theme.negative)),
         ]),
     ];
@@ -191,15 +192,15 @@ fn render_indicators(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &The
     let ind = &coin.indicators;
 
     let rsi_row = Row::new(vec![
-        Cell::from(format!("RSI(6): {:.2}", ind.rsi_6)).style(Style::default().fg(theme.indicator_primary)),
-        Cell::from(format!("RSI(12): {:.2}", ind.rsi_12)).style(Style::default().fg(theme.indicator_secondary)),
-        Cell::from(format!("RSI(24): {:.2}", ind.rsi_24)).style(Style::default().fg(theme.indicator_tertiary)),
+        Cell::from(format!(" RSI(6): {:.2}", ind.rsi_6)).style(Style::default().fg(theme.indicator_primary)),
+        Cell::from(format!(" RSI(12): {:.2}", ind.rsi_12)).style(Style::default().fg(theme.indicator_secondary)),
+        Cell::from(format!(" RSI(24): {:.2}", ind.rsi_24)).style(Style::default().fg(theme.indicator_tertiary)),
     ]);
 
     let ema_row = Row::new(vec![
-        Cell::from(format!("EMA(7): {}", widgets::format_price(ind.ema_7))).style(Style::default().fg(theme.indicator_primary)),
-        Cell::from(format!("EMA(25): {}", widgets::format_price(ind.ema_25))).style(Style::default().fg(theme.indicator_secondary)),
-        Cell::from(format!("EMA(99): {}", widgets::format_price(ind.ema_99))).style(Style::default().fg(theme.indicator_tertiary)),
+        Cell::from(format!(" EMA(7): {}", widgets::format_price(ind.ema_7))).style(Style::default().fg(theme.indicator_primary)),
+        Cell::from(format!(" EMA(25): {}", widgets::format_price(ind.ema_25))).style(Style::default().fg(theme.indicator_secondary)),
+        Cell::from(format!(" EMA(99): {}", widgets::format_price(ind.ema_99))).style(Style::default().fg(theme.indicator_tertiary)),
     ]);
 
     let table = Table::new(
