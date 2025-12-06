@@ -12,5 +12,9 @@
       "selection.background": "darkGray",
       "statusBar.live": "green"
     }
-  }
+  },
+  "api": {
+    "provider": "coinbase"
+  },
+  "pairs": ["BTC-USD", "ETH-USD", "SOL-USD"]
 }

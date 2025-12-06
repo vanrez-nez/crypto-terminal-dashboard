@@ -1,7 +1,6 @@
 use ratatui::style::Color;
-use serde::Deserialize;
-use std::fs;
-use std::path::Path;
+
+use crate::config::ThemeColors;
 
 #[derive(Clone, Copy)]
 pub struct Theme {
@@ -35,22 +34,7 @@ impl Default for Theme {
 }
 
 impl Theme {
-    pub fn load(path: &str) -> Self {
-        if !Path::new(path).exists() {
-            return Self::default();
-        }
-
-        let content = match fs::read_to_string(path) {
-            Ok(c) => c,
-            Err(_) => return Self::default(),
-        };
-
-        let config: Config = match serde_json::from_str(&content) {
-            Ok(c) => c,
-            Err(_) => return Self::default(),
-        };
-
-        let colors = &config.theme.colors;
+    pub fn from_colors(colors: &ThemeColors) -> Self {
         let default = Self::default();
 
         Self {
@@ -64,53 +48,6 @@ impl Theme {
             neutral: parse_color(&colors.neutral).unwrap_or(default.neutral),
             selection_bg: parse_color(&colors.selection_background).unwrap_or(default.selection_bg),
             status_live: parse_color(&colors.status_live).unwrap_or(default.status_live),
-        }
-    }
-}
-
-#[derive(Deserialize)]
-struct Config {
-    theme: ThemeConfig,
-}
-
-#[derive(Deserialize)]
-struct ThemeConfig {
-    colors: ThemeColors,
-}
-
-#[derive(Deserialize)]
-#[serde(default)]
-struct ThemeColors {
-    foreground: String,
-    #[serde(rename = "foreground.muted")]
-    foreground_muted: String,
-    #[serde(rename = "foreground.inactive")]
-    foreground_inactive: String,
-    accent: String,
-    #[serde(rename = "accent.secondary")]
-    accent_secondary: String,
-    positive: String,
-    negative: String,
-    neutral: String,
-    #[serde(rename = "selection.background")]
-    selection_background: String,
-    #[serde(rename = "statusBar.live")]
-    status_live: String,
-}
-
-impl Default for ThemeColors {
-    fn default() -> Self {
-        Self {
-            foreground: "white".to_string(),
-            foreground_muted: "gray".to_string(),
-            foreground_inactive: "darkGray".to_string(),
-            accent: "cyan".to_string(),
-            accent_secondary: "yellow".to_string(),
-            positive: "green".to_string(),
-            negative: "red".to_string(),
-            neutral: "yellow".to_string(),
-            selection_background: "darkGray".to_string(),
-            status_live: "green".to_string(),
         }
     }
 }

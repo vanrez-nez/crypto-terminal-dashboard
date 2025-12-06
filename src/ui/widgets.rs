@@ -102,3 +102,27 @@ pub fn format_volume(volume: f64) -> String {
         format!("${:.0}K", volume / 1_000.0)
     }
 }
+
+/// Format volume as "$722M USD / 511,319 ETH"
+pub fn format_volume_full(volume_usd: f64, volume_base: f64, symbol: &str) -> String {
+    let usd_part = if volume_usd >= 1_000_000_000.0 {
+        format!("${:.1}B", volume_usd / 1_000_000_000.0)
+    } else if volume_usd >= 1_000_000.0 {
+        format!("${:.0}M", volume_usd / 1_000_000.0)
+    } else {
+        format!("${:.0}K", volume_usd / 1_000.0)
+    };
+
+    let base_part = format_base_volume(volume_base);
+    format!("{} USD / {} {}", usd_part, base_part, symbol)
+}
+
+fn format_base_volume(volume: f64) -> String {
+    if volume >= 1_000_000.0 {
+        format!("{:.1}M", volume / 1_000_000.0)
+    } else if volume >= 1_000.0 {
+        format_with_commas(volume as u64)
+    } else {
+        format!("{:.0}", volume)
+    }
+}

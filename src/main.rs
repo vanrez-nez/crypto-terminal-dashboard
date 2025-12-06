@@ -1,4 +1,6 @@
+mod api;
 mod app;
+mod config;
 mod events;
 mod mock;
 mod theme;
@@ -11,11 +13,21 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
+use tokio::sync::mpsc;
 
+use api::coinbase::CoinbaseProvider;
+use api::PriceUpdate;
 use app::App;
-use theme::Theme;
+use config::Config;
+use mock::{coins_from_pairs, generate_mock_coins};
 
-fn main() -> io::Result<()> {
+#[tokio::main]
+async fn main() -> io::Result<()> {
+    // Load config
+    let config = Config::load("config.json");
+    let theme = config.build_theme();
+    let pairs = config.pairs();
+
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -23,14 +35,31 @@ fn main() -> io::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Load theme from config
-    let theme = Theme::load("config.json");
+    // Create channel for price updates
+    let (tx, mut rx) = mpsc::channel::<PriceUpdate>(100);
 
-    // Create app state
-    let mut app = App::new(theme);
+    // Determine provider
+    let provider = config.provider();
+    let use_live = provider == "coinbase";
+
+    // Create app with appropriate data source
+    let coins = if use_live {
+        coins_from_pairs(&pairs)
+    } else {
+        generate_mock_coins()
+    };
+    let mut app = App::new(coins, theme, provider);
+
+    // Spawn WebSocket task if using live data
+    if use_live {
+        let provider = CoinbaseProvider::new(pairs);
+        tokio::spawn(async move {
+            provider.run(tx).await;
+        });
+    }
 
     // Main loop
-    let result = run_app(&mut terminal, &mut app);
+    let result = run_app(&mut terminal, &mut app, &mut rx).await;
 
     // Restore terminal
     disable_raw_mode()?;
@@ -40,12 +69,21 @@ fn main() -> io::Result<()> {
     result
 }
 
-fn run_app(
+async fn run_app(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     app: &mut App,
+    rx: &mut mpsc::Receiver<PriceUpdate>,
 ) -> io::Result<()> {
     while app.running {
+        // Process all pending price updates (non-blocking)
+        while let Ok(update) = rx.try_recv() {
+            app.handle_update(update);
+        }
+
+        // Draw UI
         terminal.draw(|frame| ui::render(frame, app))?;
+
+        // Handle keyboard events
         events::handle_events(app)?;
     }
     Ok(())

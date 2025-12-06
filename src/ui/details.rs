@@ -1,12 +1,12 @@
 use ratatui::{
     layout::{Constraint, Layout, Rect},
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
 
-use crate::app::App;
+use crate::app::{App, ConnectionStatus};
 use crate::mock::CoinData;
 use crate::theme::Theme;
 use super::widgets;
@@ -19,20 +19,33 @@ pub fn render(frame: &mut Frame, app: &App) {
     ])
     .split(frame.area());
 
-    render_header(frame, chunks[0], &app.theme);
+    render_header(frame, chunks[0], app);
     render_content(frame, chunks[1], app);
     render_footer(frame, chunks[2], &app.theme);
 }
 
-fn render_header(frame: &mut Frame, area: Rect, theme: &Theme) {
+fn render_header(frame: &mut Frame, area: Rect, app: &App) {
+    let theme = &app.theme;
+
+    let (status_text, status_color) = match app.connection_status {
+        ConnectionStatus::Connected => ("● Live", theme.status_live),
+        ConnectionStatus::Connecting => ("◌ Connecting", Color::Yellow),
+        ConnectionStatus::Disconnected => ("○ Disconnected", Color::Red),
+        ConnectionStatus::Mock => ("◆ Mock", Color::Magenta),
+    };
+
+    let provider_display = capitalize(&app.provider);
     let header = Paragraph::new(Line::from(vec![
         Span::styled("  [", Style::default().fg(theme.foreground_inactive)),
         Span::styled("Overview", Style::default().fg(theme.foreground_inactive)),
         Span::styled("]  [Tab: ", Style::default().fg(theme.foreground_inactive)),
         Span::styled("Details", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
         Span::styled("]", Style::default().fg(theme.foreground_inactive)),
-        Span::raw("                                        "),
-        Span::styled("● Live", Style::default().fg(theme.status_live)),
+        Span::raw("          "),
+        Span::styled("Provider: ", Style::default().fg(theme.foreground_muted)),
+        Span::styled(&provider_display, Style::default().fg(theme.foreground)),
+        Span::raw("          "),
+        Span::styled(status_text, Style::default().fg(status_color)),
     ]))
     .block(
         Block::default()
@@ -84,28 +97,28 @@ fn render_price_info(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &The
 
     let lines = vec![
         Line::from(vec![
-            Span::styled("Price:    ", Style::default().fg(theme.foreground_muted)),
+            Span::styled("Price:      ", Style::default().fg(theme.foreground_muted)),
             Span::styled(
                 widgets::format_price(coin.price),
                 Style::default().fg(theme.foreground).add_modifier(Modifier::BOLD),
             ),
         ]),
         Line::from(vec![
-            Span::styled("24H:      ", Style::default().fg(theme.foreground_muted)),
+            Span::styled("24h Change: ", Style::default().fg(theme.foreground_muted)),
             Span::styled(change_str, Style::default().fg(change_color)),
             Span::raw(" "),
             Span::styled(arrow, Style::default().fg(change_color)),
         ]),
         Line::from(vec![
-            Span::styled("Volume:   ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(widgets::format_volume(coin.volume), Style::default().fg(theme.foreground)),
+            Span::styled("24h Volume: ", Style::default().fg(theme.foreground_muted)),
+            Span::styled(widgets::format_volume_full(coin.volume_usd, coin.volume_base, &coin.symbol), Style::default().fg(theme.foreground)),
         ]),
         Line::from(vec![
-            Span::styled("High:     ", Style::default().fg(theme.foreground_muted)),
+            Span::styled("24h High:   ", Style::default().fg(theme.foreground_muted)),
             Span::styled(widgets::format_price(coin.high_24h), Style::default().fg(theme.positive)),
         ]),
         Line::from(vec![
-            Span::styled("Low:      ", Style::default().fg(theme.foreground_muted)),
+            Span::styled("24h Low:    ", Style::default().fg(theme.foreground_muted)),
             Span::styled(widgets::format_price(coin.low_24h), Style::default().fg(theme.negative)),
         ]),
     ];
@@ -185,4 +198,12 @@ fn render_footer(frame: &mut Frame, area: Rect, theme: &Theme) {
     .block(Block::default().borders(Borders::ALL));
 
     frame.render_widget(footer, area);
+}
+
+fn capitalize(s: &str) -> String {
+    let mut chars = s.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(c) => c.to_uppercase().collect::<String>() + chars.as_str(),
+    }
 }

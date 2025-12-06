@@ -1,13 +1,12 @@
 use ratatui::{
     layout::{Constraint, Layout, Rect},
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Cell, Paragraph, Row, Table},
     Frame,
 };
 
-use crate::app::App;
-use crate::theme::Theme;
+use crate::app::{App, ConnectionStatus};
 
 pub fn render(frame: &mut Frame, app: &App) {
     let chunks = Layout::vertical([
@@ -17,20 +16,33 @@ pub fn render(frame: &mut Frame, app: &App) {
     ])
     .split(frame.area());
 
-    render_header(frame, chunks[0], &app.theme);
+    render_header(frame, chunks[0], app);
     render_table(frame, chunks[1], app);
     render_footer(frame, chunks[2], app);
 }
 
-fn render_header(frame: &mut Frame, area: Rect, theme: &Theme) {
+fn render_header(frame: &mut Frame, area: Rect, app: &App) {
+    let theme = &app.theme;
+
+    let (status_text, status_color) = match app.connection_status {
+        ConnectionStatus::Connected => ("● Live", theme.status_live),
+        ConnectionStatus::Connecting => ("◌ Connecting", Color::Yellow),
+        ConnectionStatus::Disconnected => ("○ Disconnected", Color::Red),
+        ConnectionStatus::Mock => ("◆ Mock", Color::Magenta),
+    };
+
+    let provider_display = capitalize(&app.provider);
     let header = Paragraph::new(Line::from(vec![
         Span::styled("  [Tab: ", Style::default().fg(theme.foreground_inactive)),
         Span::styled("Overview", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
         Span::styled("]  [", Style::default().fg(theme.foreground_inactive)),
         Span::styled("Details", Style::default().fg(theme.foreground_inactive)),
         Span::styled("]", Style::default().fg(theme.foreground_inactive)),
-        Span::raw("                                        "),
-        Span::styled("● Live", Style::default().fg(theme.status_live)),
+        Span::raw("          "),
+        Span::styled("Provider: ", Style::default().fg(theme.foreground_muted)),
+        Span::styled(&provider_display, Style::default().fg(theme.foreground)),
+        Span::raw("          "),
+        Span::styled(status_text, Style::default().fg(status_color)),
     ]))
     .block(
         Block::default()
@@ -44,7 +56,7 @@ fn render_header(frame: &mut Frame, area: Rect, theme: &Theme) {
 fn render_table(frame: &mut Frame, area: Rect, app: &App) {
     let theme = &app.theme;
 
-    let header_cells = ["", "PAIR", "PRICE", "24H %", "VOLUME", "HIGH/LOW"]
+    let header_cells = ["", "PAIR", "PRICE", "24h %", "24h VOL", "24h H/L"]
         .iter()
         .map(|h| Cell::from(*h).style(Style::default().fg(theme.accent_secondary).add_modifier(Modifier::BOLD)));
     let header = Row::new(header_cells).height(1);
@@ -60,7 +72,7 @@ fn render_table(frame: &mut Frame, area: Rect, app: &App) {
         let pair = format!("{}/USD", coin.symbol);
         let price = format_price(coin.price);
         let change = format!("{:+.2}%", coin.change_24h);
-        let volume = format_volume(coin.volume);
+        let volume = format_volume_short(coin.volume_usd, coin.volume_base);
         let high_low = format!("{} / {}", format_price_short(coin.high_24h), format_price_short(coin.low_24h));
 
         let change_color = if coin.change_24h >= 0.0 {
@@ -93,7 +105,7 @@ fn render_table(frame: &mut Frame, area: Rect, app: &App) {
             Constraint::Length(10),  // Pair
             Constraint::Length(14),  // Price
             Constraint::Length(10),  // Change
-            Constraint::Length(10),  // Volume
+            Constraint::Length(18),  // Volume
             Constraint::Length(18),  // High/Low
         ],
     )
@@ -161,12 +173,30 @@ fn format_price_short(price: f64) -> String {
     }
 }
 
-fn format_volume(volume: f64) -> String {
-    if volume >= 1_000_000_000.0 {
-        format!("${:.1}B", volume / 1_000_000_000.0)
-    } else if volume >= 1_000_000.0 {
-        format!("${:.0}M", volume / 1_000_000.0)
+fn format_volume_short(volume_usd: f64, volume_base: f64) -> String {
+    let usd = if volume_usd >= 1_000_000_000.0 {
+        format!("${:.1}B", volume_usd / 1_000_000_000.0)
+    } else if volume_usd >= 1_000_000.0 {
+        format!("${:.0}M", volume_usd / 1_000_000.0)
     } else {
-        format!("${:.0}K", volume / 1_000.0)
+        format!("${:.0}K", volume_usd / 1_000.0)
+    };
+
+    let base = if volume_base >= 1_000_000.0 {
+        format!("{:.1}M", volume_base / 1_000_000.0)
+    } else if volume_base >= 1_000.0 {
+        format!("{:.0}K", volume_base / 1_000.0)
+    } else {
+        format!("{:.0}", volume_base)
+    };
+
+    format!("{} / {}", usd, base)
+}
+
+fn capitalize(s: &str) -> String {
+    let mut chars = s.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(c) => c.to_uppercase().collect::<String>() + chars.as_str(),
     }
 }

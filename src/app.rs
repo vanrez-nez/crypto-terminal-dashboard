@@ -1,10 +1,19 @@
-use crate::mock::{generate_mock_coins, CoinData};
+use crate::api::PriceUpdate;
+use crate::mock::CoinData;
 use crate::theme::Theme;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum View {
     Overview,
     Details,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ConnectionStatus {
+    Connecting,
+    Connected,
+    Disconnected,
+    Mock,
 }
 
 pub struct App {
@@ -14,12 +23,14 @@ pub struct App {
     pub checked: Vec<bool>,
     pub running: bool,
     pub theme: Theme,
+    pub connection_status: ConnectionStatus,
+    pub provider: String,
 }
 
 impl App {
-    pub fn new(theme: Theme) -> Self {
-        let coins = generate_mock_coins();
+    pub fn new(coins: Vec<CoinData>, theme: Theme, provider: &str) -> Self {
         let coin_count = coins.len();
+        let use_mock = provider == "mock";
         Self {
             view: View::Overview,
             coins,
@@ -27,6 +38,12 @@ impl App {
             checked: vec![false; coin_count],
             running: true,
             theme,
+            connection_status: if use_mock {
+                ConnectionStatus::Mock
+            } else {
+                ConnectionStatus::Connecting
+            },
+            provider: provider.to_string(),
         }
     }
 
@@ -77,10 +94,50 @@ impl App {
             .map(|(coin, _)| coin)
             .collect()
     }
+
+    /// Handle a price update from the WebSocket
+    pub fn handle_update(&mut self, update: PriceUpdate) {
+        match update {
+            PriceUpdate::Ticker {
+                symbol,
+                price,
+                change_24h,
+                volume_24h_usd,
+                volume_24h_base,
+                high_24h,
+                low_24h,
+            } => {
+                if let Some(coin) = self.coins.iter_mut().find(|c| c.symbol == symbol) {
+                    // Update price, sparkline, and recalculate indicators
+                    coin.update_price(price);
+
+                    coin.change_24h = change_24h;
+                    coin.volume_usd = volume_24h_usd;
+                    coin.volume_base = volume_24h_base;
+                    if high_24h > 0.0 {
+                        coin.high_24h = high_24h;
+                    }
+                    if low_24h > 0.0 {
+                        coin.low_24h = low_24h;
+                    }
+                }
+            }
+            PriceUpdate::Connected => {
+                self.connection_status = ConnectionStatus::Connected;
+            }
+            PriceUpdate::Disconnected => {
+                self.connection_status = ConnectionStatus::Disconnected;
+            }
+            PriceUpdate::Error(_) => {
+                // Could log the error or show it in UI
+            }
+        }
+    }
 }
 
 impl Default for App {
     fn default() -> Self {
-        Self::new(Theme::default())
+        use crate::mock::generate_mock_coins;
+        Self::new(generate_mock_coins(), Theme::default(), "mock")
     }
 }
