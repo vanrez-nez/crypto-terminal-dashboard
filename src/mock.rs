@@ -283,6 +283,11 @@ impl CoinData {
         // Add 0.5% padding
         (min * 0.995, max * 1.005)
     }
+
+    /// Get the timestamp of the last candle (for countdown timer)
+    pub fn last_candle_time(&self) -> Option<i64> {
+        self.candles.last().map(|c| c.time)
+    }
 }
 
 pub fn generate_mock_coins() -> Vec<CoinData> {

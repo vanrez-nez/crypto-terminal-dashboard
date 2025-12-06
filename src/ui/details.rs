@@ -1,17 +1,17 @@
 use ratatui::{
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Cell, Paragraph, Row, Table},
     Frame,
 };
 
-use crate::app::{App, ConnectionStatus};
+use crate::app::{App, ChartType, ConnectionStatus};
 use crate::mock::CoinData;
 use crate::theme::Theme;
-use super::widgets::{self, price_change_color};
+use super::widgets::{self, price_change_color, calculate_time_remaining};
 
-pub fn render(frame: &mut Frame, app: &App) {
+pub fn render(frame: &mut Frame, app: &mut App) {
     let chunks = Layout::vertical([
         Constraint::Length(3),  // Header
         Constraint::Min(10),    // Content
@@ -29,13 +29,17 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
 
     let (status_text, status_color) = match app.connection_status {
         ConnectionStatus::Connected => ("● Live", theme.status_live),
-        ConnectionStatus::Connecting => ("◌ Connecting", Color::Yellow),
-        ConnectionStatus::Disconnected => ("○ Disconnected", Color::Red),
-        ConnectionStatus::Mock => ("◆ Mock", Color::Magenta),
+        ConnectionStatus::Connecting => ("◌ Connecting", theme.status_connecting),
+        ConnectionStatus::Disconnected => ("○ Disconnected", theme.status_disconnected),
+        ConnectionStatus::Mock => ("◆ Mock", theme.status_mock),
     };
 
     let provider_display = capitalize(&app.provider);
     let window_display = app.time_window.as_str();
+    let chart_type_display = match app.chart_type {
+        ChartType::Line => "Line",
+        ChartType::Candlestick => "Candle",
+    };
     let header = Paragraph::new(Line::from(vec![
         Span::styled("  [", Style::default().fg(theme.foreground_inactive)),
         Span::styled("Overview", Style::default().fg(theme.foreground_inactive)),
@@ -49,6 +53,9 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
         Span::styled("[w] Window: ", Style::default().fg(theme.foreground_muted)),
         Span::styled(window_display, Style::default().fg(theme.accent)),
         Span::raw("    "),
+        Span::styled("[c] Chart: ", Style::default().fg(theme.foreground_muted)),
+        Span::styled(chart_type_display, Style::default().fg(theme.accent)),
+        Span::raw("    "),
         Span::styled(status_text, Style::default().fg(status_color)),
     ]))
     .block(
@@ -60,7 +67,7 @@ fn render_header(frame: &mut Frame, area: Rect, app: &App) {
     frame.render_widget(header, area);
 }
 
-fn render_content(frame: &mut Frame, area: Rect, app: &App) {
+fn render_content(frame: &mut Frame, area: Rect, app: &mut App) {
     let selected = app.selected_coins();
 
     if selected.is_empty() {
@@ -79,12 +86,25 @@ fn render_content(frame: &mut Frame, area: Rect, app: &App) {
     let columns = Layout::horizontal(constraints).split(area);
 
     let window = app.time_window.as_str();
+    let granularity = app.time_window.granularity();
+    let scroll_offset = app.candle_scroll_offset;
+    let theme = app.theme;
+    let chart_type = app.chart_type;
+
+    let mut clamped_offset = None;
     for (i, coin) in selected.iter().enumerate() {
-        render_coin_panel(frame, columns[i], coin, window, &app.theme);
+        if let Some(offset) = render_coin_panel(frame, columns[i], coin, window, &theme, chart_type, granularity, scroll_offset) {
+            clamped_offset = Some(offset);
+        }
+    }
+
+    // Sync clamped scroll offset back to app
+    if let Some(offset) = clamped_offset {
+        app.candle_scroll_offset = offset;
     }
 }
 
-fn render_coin_panel(frame: &mut Frame, area: Rect, coin: &CoinData, window: &str, theme: &Theme) {
+fn render_coin_panel(frame: &mut Frame, area: Rect, coin: &CoinData, window: &str, theme: &Theme, chart_type: ChartType, granularity: u32, scroll_offset: isize) -> Option<isize> {
     let chunks = Layout::vertical([
         Constraint::Length(3),  // Price box
         Constraint::Length(7),  // Stats info
@@ -96,12 +116,12 @@ fn render_coin_panel(frame: &mut Frame, area: Rect, coin: &CoinData, window: &st
     render_price_box(frame, chunks[0], coin, theme);
     render_stats_info(frame, chunks[1], coin, theme);
     render_indicators(frame, chunks[2], coin, theme);
-    render_chart_section(frame, chunks[3], coin, window, theme);
+    render_chart_section(frame, chunks[3], coin, window, theme, chart_type, granularity, scroll_offset)
 }
 
 fn render_price_box(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme) {
     // Calculate price color based on change compared to historical average
-    let price_color = price_change_color(coin.price, coin.prev_price, coin.avg_change());
+    let price_color = price_change_color(coin.price, coin.prev_price, coin.avg_change(), theme);
 
     let title = format!(" {}/USD ", coin.symbol);
     let block = Block::default()
@@ -170,21 +190,16 @@ fn render_stats_info(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &The
 fn render_indicators(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme) {
     let ind = &coin.indicators;
 
-    // Colors for indicator labels and values
-    let orange = Color::Rgb(255, 165, 0);
-    let magenta = Color::Magenta;
-    let dim_purple = Color::Rgb(100, 80, 120);
-
     let rsi_row = Row::new(vec![
-        Cell::from(format!("RSI(6): {:.2}", ind.rsi_6)).style(Style::default().fg(orange)),
-        Cell::from(format!("RSI(12): {:.2}", ind.rsi_12)).style(Style::default().fg(magenta)),
-        Cell::from(format!("RSI(24): {:.2}", ind.rsi_24)).style(Style::default().fg(dim_purple)),
+        Cell::from(format!("RSI(6): {:.2}", ind.rsi_6)).style(Style::default().fg(theme.indicator_primary)),
+        Cell::from(format!("RSI(12): {:.2}", ind.rsi_12)).style(Style::default().fg(theme.indicator_secondary)),
+        Cell::from(format!("RSI(24): {:.2}", ind.rsi_24)).style(Style::default().fg(theme.indicator_tertiary)),
     ]);
 
     let ema_row = Row::new(vec![
-        Cell::from(format!("EMA(7): {}", widgets::format_price(ind.ema_7))).style(Style::default().fg(orange)),
-        Cell::from(format!("EMA(25): {}", widgets::format_price(ind.ema_25))).style(Style::default().fg(magenta)),
-        Cell::from(format!("EMA(99): {}", widgets::format_price(ind.ema_99))).style(Style::default().fg(dim_purple)),
+        Cell::from(format!("EMA(7): {}", widgets::format_price(ind.ema_7))).style(Style::default().fg(theme.indicator_primary)),
+        Cell::from(format!("EMA(25): {}", widgets::format_price(ind.ema_25))).style(Style::default().fg(theme.indicator_secondary)),
+        Cell::from(format!("EMA(99): {}", widgets::format_price(ind.ema_99))).style(Style::default().fg(theme.indicator_tertiary)),
     ]);
 
     let table = Table::new(
@@ -205,10 +220,19 @@ fn render_indicators(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &The
     frame.render_widget(table, area);
 }
 
-fn render_chart_section(frame: &mut Frame, area: Rect, coin: &CoinData, window: &str, theme: &Theme) {
-    let data = coin.chart_data();
-    let bounds = coin.price_bounds();
-    widgets::render_price_chart(frame, area, &data, bounds, window, theme);
+fn render_chart_section(frame: &mut Frame, area: Rect, coin: &CoinData, window: &str, theme: &Theme, chart_type: ChartType, granularity: u32, scroll_offset: isize) -> Option<isize> {
+    match chart_type {
+        ChartType::Line => {
+            let data = coin.chart_data();
+            let bounds = coin.price_bounds();
+            widgets::render_price_chart(frame, area, &data, bounds, window, theme);
+            None
+        }
+        ChartType::Candlestick => {
+            let time_remaining = coin.last_candle_time().map(|t| calculate_time_remaining(t, granularity));
+            Some(widgets::render_candlestick_chart(frame, area, &coin.candles, window, theme, time_remaining, scroll_offset))
+        }
+    }
 }
 
 fn render_footer(frame: &mut Frame, area: Rect, theme: &Theme) {

@@ -1,16 +1,30 @@
 {
   "theme": {
     "colors": {
-      "foreground": "white",
-      "foreground.muted": "gray",
-      "foreground.inactive": "darkGray",
-      "accent": "cyan",
-      "accent.secondary": "yellow",
-      "positive": "green",
-      "negative": "red",
-      "neutral": "yellow",
-      "selection.background": "darkGray",
-      "statusBar.live": "green"
+      "foreground": "#FFFFFF",
+      "foreground.muted": "#888888",
+      "foreground.inactive": "#555555",
+      "accent": "#00FFFF",
+      "accent.secondary": "#FFFF00",
+      "positive": "#0ECB81",
+      "negative": "#F6465D",
+      "neutral": "#FFFF00",
+      "selection.background": "#333333",
+      "status.live": "#0ECB81",
+      "status.connecting": "#F0B90B",
+      "status.disconnected": "#F6465D",
+      "status.mock": "#BB86FC",
+      "candle.bullish": "#31a354",
+      "candle.bearish": "#E00010",
+      "indicator.primary": "#F0B90B",
+      "indicator.secondary": "#BB86FC",
+      "indicator.tertiary": "#645078",
+      "price.up.high": "#0ECB81",
+      "price.up.mid": "#0A9961",
+      "price.up.low": "#066641",
+      "price.down.high": "#F6465D",
+      "price.down.mid": "#B93546",
+      "price.down.low": "#7B232F"
     }
   },
   "api": {

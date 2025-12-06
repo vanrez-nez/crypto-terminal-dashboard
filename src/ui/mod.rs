@@ -6,7 +6,7 @@ use ratatui::Frame;
 
 use crate::app::{App, View};
 
-pub fn render(frame: &mut Frame, app: &App) {
+pub fn render(frame: &mut Frame, app: &mut App) {
     match app.view {
         View::Overview => overview::render(frame, app),
         View::Details => details::render(frame, app),

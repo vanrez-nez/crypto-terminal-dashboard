@@ -9,6 +9,12 @@ pub enum View {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ChartType {
+    Line,
+    Candlestick,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ConnectionStatus {
     Connecting,
     Connected,
@@ -65,6 +71,8 @@ pub struct App {
     pub provider: String,
     pub time_window: TimeWindow,
     pub needs_candle_refresh: bool,
+    pub chart_type: ChartType,
+    pub candle_scroll_offset: isize,
 }
 
 impl App {
@@ -86,7 +94,32 @@ impl App {
             provider: provider.to_string(),
             time_window: TimeWindow::Hour1,
             needs_candle_refresh: true, // Fetch candles on startup
+            chart_type: ChartType::Line,
+            candle_scroll_offset: 0,
         }
+    }
+
+    /// Cycle between Line and Candlestick chart types
+    pub fn cycle_chart_type(&mut self) {
+        self.chart_type = match self.chart_type {
+            ChartType::Line => ChartType::Candlestick,
+            ChartType::Candlestick => ChartType::Line,
+        };
+    }
+
+    /// Scroll candle chart left (back in time)
+    pub fn scroll_candles_left(&mut self) {
+        self.candle_scroll_offset += 5;
+    }
+
+    /// Scroll candle chart right (forward in time, can go negative to snap to last candles)
+    pub fn scroll_candles_right(&mut self) {
+        self.candle_scroll_offset -= 5;
+    }
+
+    /// Reset candle scroll to most recent
+    pub fn reset_candle_scroll(&mut self) {
+        self.candle_scroll_offset = 0;
     }
 
     /// Cycle to the next time window. Sets flag to trigger candle refetch.

@@ -3,60 +3,59 @@ use ratatui::{
     style::{Color, Modifier, Style},
     symbols::Marker,
     text::Span,
-    widgets::{Axis, Block, Borders, Chart, Dataset, GraphType},
+    widgets::{
+        Axis, Block, Borders, Chart, Dataset, GraphType,
+        canvas::{Canvas, Line},
+    },
     Frame,
 };
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use crate::api::Candle;
 
 use crate::theme::Theme;
 
 /// Calculate color for price based on change compared to historical average
 ///
 /// Compares current change magnitude against the average of recent changes:
-/// - Level 1 (light): change <= avg
-/// - Level 2 (medium): avg < change <= 2*avg
-/// - Level 3 (strong): change > 3*avg
+/// - Low: change <= avg
+/// - Mid: avg < change <= 2*avg
+/// - High: change > 2*avg
 ///
-/// Returns one of 7 colors: 3 red gradients, gray, or 3 green gradients
-pub fn price_change_color(current: f64, previous: f64, avg_change: f64) -> Color {
-    // Calculate the change
+/// Returns discrete colors from theme (price.up/down.high/mid/low)
+pub fn price_change_color(current: f64, previous: f64, avg_change: f64, theme: &Theme) -> Color {
     let change = current - previous;
 
-    // No change - gray
     if change == 0.0 {
-        return Color::Rgb(128, 128, 128);
+        return theme.neutral;
     }
 
     let abs_change = change.abs();
+    let is_up = change > 0.0;
 
-    // No history yet - use a subtle color based on direction
+    // No history yet - use low intensity
     if avg_change <= 0.0 {
-        return if change > 0.0 {
-            Color::Rgb(100, 180, 100)   // Light green
-        } else {
-            Color::Rgb(180, 100, 100)   // Light red
-        };
+        return if is_up { theme.price_up_low } else { theme.price_down_low };
     }
 
     // Compare change to average and determine level
     let ratio = abs_change / avg_change;
 
-    if change > 0.0 {
-        // Price went UP - green gradients
-        if ratio > 3.0 {
-            Color::Rgb(0, 255, 0)       // Level 3: Strong green (> 3x avg)
-        } else if ratio > 2.0 {
-            Color::Rgb(50, 205, 50)     // Level 2: Medium green (2-3x avg)
+    if is_up {
+        if ratio > 2.0 {
+            theme.price_up_high
+        } else if ratio > 1.0 {
+            theme.price_up_mid
         } else {
-            Color::Rgb(100, 180, 100)   // Level 1: Light green (<= avg)
+            theme.price_up_low
         }
     } else {
-        // Price went DOWN - red gradients
-        if ratio > 3.0 {
-            Color::Rgb(255, 0, 0)       // Level 3: Strong red (> 3x avg)
-        } else if ratio > 2.0 {
-            Color::Rgb(220, 50, 50)     // Level 2: Medium red (2-3x avg)
+        if ratio > 2.0 {
+            theme.price_down_high
+        } else if ratio > 1.0 {
+            theme.price_down_mid
         } else {
-            Color::Rgb(180, 100, 100)   // Level 1: Light red (<= avg)
+            theme.price_down_low
         }
     }
 }
@@ -192,4 +191,165 @@ fn create_y_labels(min: f64, max: f64) -> Vec<Span<'static>> {
         Span::raw(format_price_label(mid)),
         Span::raw(format_price_label(max)),
     ]
+}
+
+/// Calculate time remaining until current candle closes
+pub fn calculate_time_remaining(last_candle_time: i64, granularity: u32) -> (u32, u32, u32) {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+
+    let candle_end = last_candle_time + granularity as i64;
+    let remaining = (candle_end - now).max(0) as u32;
+
+    let hours = remaining / 3600;
+    let minutes = (remaining % 3600) / 60;
+    let seconds = remaining % 60;
+
+    (hours, minutes, seconds)
+}
+
+/// Format time remaining as HH:MM:SS
+pub fn format_time_remaining(hours: u32, minutes: u32, seconds: u32) -> String {
+    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+}
+
+/// Render a candlestick chart using Canvas for sub-character precision
+/// 3-unit width per candle, wick in center, with navigation
+/// Returns the clamped scroll_offset to sync back to App state
+pub fn render_candlestick_chart(
+    frame: &mut Frame,
+    area: Rect,
+    candles: &[Candle],
+    window: &str,
+    theme: &Theme,
+    time_remaining: Option<(u32, u32, u32)>,
+    scroll_offset: isize,
+) -> isize {
+    // Build title with optional countdown timer
+    let title = match time_remaining {
+        Some((h, m, s)) => format!(" Candles ({}) [{}] ", window, format_time_remaining(h, m, s)),
+        None => format!(" Candles ({}) ", window),
+    };
+
+    if candles.is_empty() {
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .title(format!(" Candles ({}) - No data ", window))
+            .title_style(Style::default().fg(theme.foreground_muted));
+        frame.render_widget(block, area);
+        return scroll_offset;
+    }
+
+    // Each candle takes ~3 chars width, calculate visible slots
+    let inner_width = area.width.saturating_sub(2) as usize;
+    let visible_slots = (inner_width / 3).max(1);
+    let total_candles = candles.len();
+
+    // Clamp scroll_offset:
+    // - Left limit: can't scroll past all candles (leave at least 1 visible)
+    // - Right limit: must show at least 2 candles (negative offset = empty space on right)
+    let max_left = (total_candles.saturating_sub(1)) as isize;
+    let max_right = -((visible_slots.saturating_sub(2)) as isize);
+    let scroll_offset = scroll_offset.clamp(max_right, max_left);
+
+    // Calculate which candles to display and empty space on right
+    let (start_idx, end_idx, empty_right) = if scroll_offset >= 0 {
+        // Normal left scroll (viewing history)
+        let offset = scroll_offset as usize;
+        let end = total_candles.saturating_sub(offset);
+        let start = end.saturating_sub(visible_slots);
+        (start, end, 0usize)
+    } else {
+        // Right pan - show fewer candles with empty space on right
+        let right_offset = (-scroll_offset) as usize;
+        let candles_to_show = visible_slots.saturating_sub(right_offset).max(2);
+        let start = total_candles.saturating_sub(candles_to_show);
+        (start, total_candles, right_offset)
+    };
+
+    let display_candles = &candles[start_idx..end_idx];
+
+    if display_candles.is_empty() {
+        return scroll_offset;
+    }
+
+    let num_candles = display_candles.len();
+    let total_slots = num_candles + empty_right;
+
+    // Calculate price bounds for visible candles only (auto-scale)
+    let min_price = display_candles.iter().map(|c| c.low).fold(f64::INFINITY, f64::min);
+    let max_price = display_candles.iter().map(|c| c.high).fold(f64::NEG_INFINITY, f64::max);
+
+    // Candle spacing: 3 units per candle
+    let candle_unit_width = 3.0;
+    let body_width = 2.0;
+
+    // Prepare candle data for closure (using theme colors)
+    let bullish_color = theme.candle_bullish;
+    let bearish_color = theme.candle_bearish;
+
+    let candles_data: Vec<(f64, f64, f64, f64, Color)> = display_candles
+        .iter()
+        .map(|c| {
+            let color = if c.close >= c.open { bullish_color } else { bearish_color };
+            (c.open, c.high, c.low, c.close, color)
+        })
+        .collect();
+
+    let canvas = Canvas::default()
+        .block(
+            Block::default()
+                .title(title)
+                .title_style(Style::default().fg(theme.accent_secondary).add_modifier(Modifier::BOLD))
+                .borders(Borders::ALL),
+        )
+        .marker(Marker::Braille)
+        .x_bounds([0.0, (total_slots as f64) * candle_unit_width])
+        .y_bounds([min_price, max_price])
+        .paint(move |ctx| {
+            for (i, (open, high, low, close, color)) in candles_data.iter().enumerate() {
+                let x_center = (i as f64 * candle_unit_width) + (candle_unit_width / 2.0);
+
+                // Draw wick (vertical line from low to high)
+                ctx.draw(&Line {
+                    x1: x_center,
+                    y1: *low,
+                    x2: x_center,
+                    y2: *high,
+                    color: *color,
+                });
+
+                // Draw body (thicker vertical line from open to close)
+                let body_bottom = open.min(*close);
+                let body_top = open.max(*close);
+
+                let half_width = body_width / 2.0;
+                ctx.draw(&Line {
+                    x1: x_center - half_width,
+                    y1: body_bottom,
+                    x2: x_center - half_width,
+                    y2: body_top,
+                    color: *color,
+                });
+                ctx.draw(&Line {
+                    x1: x_center,
+                    y1: body_bottom,
+                    x2: x_center,
+                    y2: body_top,
+                    color: *color,
+                });
+                ctx.draw(&Line {
+                    x1: x_center + half_width,
+                    y1: body_bottom,
+                    x2: x_center + half_width,
+                    y2: body_top,
+                    color: *color,
+                });
+            }
+        });
+
+    frame.render_widget(canvas, area);
+    scroll_offset
 }

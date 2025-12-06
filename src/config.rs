@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
@@ -7,7 +8,7 @@ use crate::theme::Theme;
 #[derive(Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
-    pub theme: Option<ThemeColors>,
+    pub theme: Option<ThemeConfig>,
     #[serde(default)]
     pub api: Option<ApiConfig>,
     #[serde(default)]
@@ -19,43 +20,27 @@ pub struct ApiConfig {
     pub provider: String,
 }
 
-#[derive(Deserialize, Default)]
-pub struct ThemeColors {
+#[derive(Deserialize, Default, Clone)]
+pub struct ThemeConfig {
     #[serde(default)]
-    pub foreground: String,
-    #[serde(default, rename = "foreground.muted")]
-    pub foreground_muted: String,
-    #[serde(default, rename = "foreground.inactive")]
-    pub foreground_inactive: String,
-    #[serde(default)]
-    pub accent: String,
-    #[serde(default, rename = "accent.secondary")]
-    pub accent_secondary: String,
-    #[serde(default)]
-    pub positive: String,
-    #[serde(default)]
-    pub negative: String,
-    #[serde(default)]
-    pub neutral: String,
-    #[serde(default, rename = "selection.background")]
-    pub selection_background: String,
-    #[serde(default, rename = "statusBar.live")]
-    pub status_live: String,
+    pub colors: HashMap<String, String>,
+}
+
+impl ThemeConfig {
+    /// Get a color value by key, returns None if not found or empty
+    pub fn get(&self, key: &str) -> Option<&str> {
+        self.colors.get(key).map(|s| s.as_str()).filter(|s| !s.is_empty())
+    }
 }
 
 #[derive(Deserialize)]
 struct RawConfig {
     #[serde(default)]
-    theme: Option<RawThemeConfig>,
+    theme: Option<ThemeConfig>,
     #[serde(default)]
     api: Option<ApiConfig>,
     #[serde(default)]
     pairs: Option<Vec<String>>,
-}
-
-#[derive(Deserialize)]
-struct RawThemeConfig {
-    colors: ThemeColors,
 }
 
 impl Config {
@@ -69,15 +54,13 @@ impl Config {
             Err(_) => return Self::default(),
         };
 
-        let raw: RawConfig = match serde_json::from_str(&content) {
-            Ok(c) => c,
-            Err(_) => return Self::default(),
-        };
-
-        Self {
-            theme: raw.theme.map(|t| t.colors),
-            api: raw.api,
-            pairs: raw.pairs,
+        match serde_json::from_str::<RawConfig>(&content) {
+            Ok(raw) => Self {
+                theme: raw.theme,
+                api: raw.api,
+                pairs: raw.pairs,
+            },
+            Err(_) => Self::default(),
         }
     }
 
@@ -100,7 +83,7 @@ impl Config {
 
     pub fn build_theme(&self) -> Theme {
         match &self.theme {
-            Some(colors) => Theme::from_colors(colors),
+            Some(config) => Theme::from_config(config),
             None => Theme::default(),
         }
     }
