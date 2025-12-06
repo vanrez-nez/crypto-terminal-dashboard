@@ -1,9 +1,14 @@
+use std::collections::VecDeque;
 use crate::api::Candle;
+
+const CHANGE_HISTORY_SIZE: usize = 50;  // Number of samples to average
 
 pub struct CoinData {
     pub symbol: String,
     pub name: String,
     pub price: f64,
+    pub prev_price: f64,           // Previous price for change detection
+    pub change_history: VecDeque<f64>,  // History of absolute price changes
     pub change_24h: f64,
     pub volume_usd: f64,
     pub volume_base: f64,
@@ -51,6 +56,8 @@ impl CoinData {
             symbol: symbol.to_string(),
             name: name.to_string(),
             price: 0.0,
+            prev_price: 0.0,
+            change_history: VecDeque::with_capacity(CHANGE_HISTORY_SIZE),
             change_24h: 0.0,
             volume_usd: 0.0,
             volume_base: 0.0,
@@ -62,8 +69,31 @@ impl CoinData {
         }
     }
 
+    /// Calculate average absolute change from history
+    pub fn avg_change(&self) -> f64 {
+        if self.change_history.is_empty() {
+            return 0.0;
+        }
+        let sum: f64 = self.change_history.iter().sum();
+        sum / self.change_history.len() as f64
+    }
+
     /// Update current price from WebSocket ticker and recalculate indicators
     pub fn update_price(&mut self, price: f64) {
+        // Track change history for dynamic color gradient
+        if self.price > 0.0 {
+            let abs_change = (price - self.price).abs();
+            if abs_change > 0.0 {
+                // Add to history, remove oldest if at capacity
+                if self.change_history.len() >= CHANGE_HISTORY_SIZE {
+                    self.change_history.pop_front();
+                }
+                self.change_history.push_back(abs_change);
+            }
+        }
+
+        // Track previous price
+        self.prev_price = self.price;
         self.price = price;
 
         // Update the last candle's close price to current live price
@@ -260,6 +290,8 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
             symbol: "BTC".to_string(),
             name: "Bitcoin".to_string(),
             price: 67432.10,
+            prev_price: 67432.10,
+            change_history: VecDeque::new(),
             change_24h: 2.34,
             volume_usd: 28_400_000_000.0,
             volume_base: 421_234.0,
@@ -283,6 +315,8 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
             symbol: "ETH".to_string(),
             name: "Ethereum".to_string(),
             price: 3521.45,
+            prev_price: 3521.45,
+            change_history: VecDeque::new(),
             change_24h: -0.82,
             volume_usd: 14_200_000_000.0,
             volume_base: 4_032_150.0,
@@ -306,6 +340,8 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
             symbol: "SOL".to_string(),
             name: "Solana".to_string(),
             price: 142.33,
+            prev_price: 142.33,
+            change_history: VecDeque::new(),
             change_24h: 5.21,
             volume_usd: 2_100_000_000.0,
             volume_base: 14_753_000.0,
@@ -329,6 +365,8 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
             symbol: "XRP".to_string(),
             name: "Ripple".to_string(),
             price: 0.5234,
+            prev_price: 0.5234,
+            change_history: VecDeque::new(),
             change_24h: 1.02,
             volume_usd: 1_800_000_000.0,
             volume_base: 3_439_816_000.0,
@@ -352,6 +390,8 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
             symbol: "ADA".to_string(),
             name: "Cardano".to_string(),
             price: 0.4521,
+            prev_price: 0.4521,
+            change_history: VecDeque::new(),
             change_24h: -0.34,
             volume_usd: 890_000_000.0,
             volume_base: 1_968_368_000.0,

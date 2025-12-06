@@ -9,7 +9,7 @@ use ratatui::{
 use crate::app::{App, ConnectionStatus};
 use crate::mock::CoinData;
 use crate::theme::Theme;
-use super::widgets;
+use super::widgets::{self, render_number_grid, price_change_color};
 
 pub fn render(frame: &mut Frame, app: &App) {
     let chunks = Layout::vertical([
@@ -86,7 +86,7 @@ fn render_content(frame: &mut Frame, area: Rect, app: &App) {
 
 fn render_coin_panel(frame: &mut Frame, area: Rect, coin: &CoinData, window: &str, theme: &Theme) {
     let chunks = Layout::vertical([
-        Constraint::Length(8),  // Price info
+        Constraint::Length(15), // Price info: 1 pad top + 7 grid + 1 pad bottom + 4 info + 2 borders
         Constraint::Length(8),  // Indicators
         Constraint::Min(8),     // Chart (increased for proper display)
     ])
@@ -100,33 +100,34 @@ fn render_coin_panel(frame: &mut Frame, area: Rect, coin: &CoinData, window: &st
 fn render_price_info(frame: &mut Frame, area: Rect, coin: &CoinData, theme: &Theme) {
     let (change_str, change_color, arrow) = widgets::format_change(coin.change_24h, theme);
 
-    let lines = vec![
-        Line::from(vec![
-            Span::styled("Price:      ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(
-                widgets::format_price(coin.price),
-                Style::default().fg(theme.foreground).add_modifier(Modifier::BOLD),
-            ),
-        ]),
-        Line::from(vec![
-            Span::styled("24h Change: ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(change_str, Style::default().fg(change_color)),
-            Span::raw(" "),
-            Span::styled(arrow, Style::default().fg(change_color)),
-        ]),
-        Line::from(vec![
-            Span::styled("24h Volume: ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(widgets::format_volume_full(coin.volume_usd, coin.volume_base, &coin.symbol), Style::default().fg(theme.foreground)),
-        ]),
-        Line::from(vec![
-            Span::styled("24h High:   ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(widgets::format_price(coin.high_24h), Style::default().fg(theme.positive)),
-        ]),
-        Line::from(vec![
-            Span::styled("24h Low:    ", Style::default().fg(theme.foreground_muted)),
-            Span::styled(widgets::format_price(coin.low_24h), Style::default().fg(theme.negative)),
-        ]),
-    ];
+    // Format price for grid rendering
+    let price_str = format!("${:.2}", coin.price);
+
+    // Calculate price color based on change compared to historical average
+    let price_color = price_change_color(coin.price, coin.prev_price, coin.avg_change());
+
+    // Build lines: grid number with padding (top, right, bottom, left)
+    let mut lines: Vec<Line> = render_number_grid(&price_str, price_color, (1, 2, 1, 2));
+
+    // Add original formatting for other elements
+    lines.push(Line::from(vec![
+        Span::styled("24h Change: ", Style::default().fg(theme.foreground_muted)),
+        Span::styled(change_str, Style::default().fg(change_color)),
+        Span::raw(" "),
+        Span::styled(arrow, Style::default().fg(change_color)),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("24h Volume: ", Style::default().fg(theme.foreground_muted)),
+        Span::styled(widgets::format_volume_full(coin.volume_usd, coin.volume_base, &coin.symbol), Style::default().fg(theme.foreground)),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("24h High:   ", Style::default().fg(theme.foreground_muted)),
+        Span::styled(widgets::format_price(coin.high_24h), Style::default().fg(theme.positive)),
+    ]));
+    lines.push(Line::from(vec![
+        Span::styled("24h Low:    ", Style::default().fg(theme.foreground_muted)),
+        Span::styled(widgets::format_price(coin.low_24h), Style::default().fg(theme.negative)),
+    ]));
 
     let title = format!(" {}/USD ", coin.symbol);
     let block = Block::default()
