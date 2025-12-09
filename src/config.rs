@@ -1,7 +1,8 @@
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::PathBuf;
 
 use crate::theme::Theme;
 
@@ -44,12 +45,36 @@ struct RawConfig {
 }
 
 impl Config {
-    pub fn load(path: &str) -> Self {
-        if !Path::new(path).exists() {
-            return Self::default();
+    /// Find config file path. Search order:
+    /// 1. Next to the executable
+    /// 2. Current working directory
+    fn find_config_path(filename: &str) -> Option<PathBuf> {
+        // Try next to the executable first
+        if let Ok(exe_path) = env::current_exe() {
+            if let Some(exe_dir) = exe_path.parent() {
+                let config_path = exe_dir.join(filename);
+                if config_path.exists() {
+                    return Some(config_path);
+                }
+            }
         }
 
-        let content = match fs::read_to_string(path) {
+        // Fall back to current working directory
+        let cwd_path = PathBuf::from(filename);
+        if cwd_path.exists() {
+            return Some(cwd_path);
+        }
+
+        None
+    }
+
+    pub fn load(filename: &str) -> Self {
+        let path = match Self::find_config_path(filename) {
+            Some(p) => p,
+            None => return Self::default(),
+        };
+
+        let content = match fs::read_to_string(&path) {
             Ok(c) => c,
             Err(_) => return Self::default(),
         };
