@@ -347,6 +347,13 @@ impl PanelBuilder {
         self
     }
 
+    /// Set a marker ID for this panel (without making it focusable)
+    /// Used to identify special panels like chart areas after layout
+    pub fn marker_id(mut self, id: impl Into<String>) -> Self {
+        self.panel_style.panel_id = Some(id.into());
+        self
+    }
+
     /// Set border color when focused
     pub fn focus_border(mut self, color: [f32; 4]) -> Self {
         self.panel_style.focus_border_color = Some(color);

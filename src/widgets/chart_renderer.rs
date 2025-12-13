@@ -598,7 +598,9 @@ pub fn calculate_visible_range(
     // Calculate which candles are visible
     // With offset=0, the rightmost slot shows candle[total-1]
     // With positive offset, we scroll into history
-    let right_idx = (total_candles as isize - 1 - clamped_offset).max(0) as usize;
+    // Clamp right_idx to valid range [0, total_candles-1]
+    let right_idx = (total_candles as isize - 1 - clamped_offset)
+        .clamp(0, total_candles as isize - 1) as usize;
     let left_idx = right_idx.saturating_sub(visible_slots - 1);
 
     let empty_right_slots = if clamped_offset < 0 {
@@ -609,7 +611,7 @@ pub fn calculate_visible_range(
 
     VisibleRange {
         start_idx: left_idx,
-        end_idx: right_idx + 1, // exclusive
+        end_idx: (right_idx + 1).min(total_candles), // exclusive, clamped to total
         empty_right_slots,
         clamped_offset,
     }

@@ -59,6 +59,9 @@ impl TimeWindow {
     }
 }
 
+/// Zoom level presets: fewer candles = zoomed in, more candles = zoomed out
+const ZOOM_LEVELS: [usize; 5] = [20, 35, 50, 80, 120];
+
 pub struct App {
     pub view: View,
     pub coins: Vec<CoinData>,
@@ -71,6 +74,8 @@ pub struct App {
     pub needs_candle_refresh: bool,
     pub chart_type: ChartType,
     pub candle_scroll_offset: isize,
+    /// Number of visible candles (zoom level)
+    pub visible_candles: usize,
 }
 
 impl App {
@@ -93,6 +98,7 @@ impl App {
             needs_candle_refresh: true, // Fetch candles on startup
             chart_type: ChartType::Line,
             candle_scroll_offset: 0,
+            visible_candles: 50, // Default zoom level
         }
     }
 
@@ -117,6 +123,24 @@ impl App {
     /// Reset candle scroll to most recent
     pub fn reset_candle_scroll(&mut self) {
         self.candle_scroll_offset = 0;
+    }
+
+    /// Zoom in: show fewer candles (each wider)
+    pub fn zoom_in(&mut self) {
+        if let Some(pos) = ZOOM_LEVELS.iter().position(|&z| z == self.visible_candles) {
+            if pos > 0 {
+                self.visible_candles = ZOOM_LEVELS[pos - 1];
+            }
+        }
+    }
+
+    /// Zoom out: show more candles (each thinner)
+    pub fn zoom_out(&mut self) {
+        if let Some(pos) = ZOOM_LEVELS.iter().position(|&z| z == self.visible_candles) {
+            if pos < ZOOM_LEVELS.len() - 1 {
+                self.visible_candles = ZOOM_LEVELS[pos + 1];
+            }
+        }
     }
 
     /// Cycle to the next time window. Sets flag to trigger candle refetch.

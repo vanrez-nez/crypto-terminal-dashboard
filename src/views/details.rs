@@ -6,17 +6,25 @@ use taffy::prelude::*;
 use crate::app::{App, TimeWindow};
 use crate::mock::CoinData;
 use crate::widgets::{
-    chart_renderer::PixelRect, control_footer::build_details_footer,
-    indicator_panel::build_indicator_panel, price_panel::build_price_panel,
-    status_header::build_status_header, theme::GlTheme, titled_panel::titled_panel,
+    control_footer::build_details_footer, indicator_panel::build_indicator_panel,
+    price_panel::build_price_panel, status_header::build_status_header, theme::GlTheme,
+    titled_panel::titled_panel,
 };
+
+/// Prefix for chart panel marker IDs
+pub const CHART_PANEL_PREFIX: &str = "chart_";
 
 /// Represents a chart area that needs to be rendered separately
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 pub struct ChartArea {
     pub coin_index: usize,
-    pub bounds: PixelRect,
+}
+
+impl ChartArea {
+    /// Create a new ChartArea
+    pub fn new(coin_index: usize) -> Self {
+        Self { coin_index }
+    }
 }
 
 /// Spacing configuration for the details layout.
@@ -60,12 +68,10 @@ pub fn build_details_view(
     // Build coin columns
     let columns: Vec<PanelBuilder> = active_coins
         .iter()
-        .map(|(idx, coin)| {
-            chart_areas.push(ChartArea {
-                coin_index: *idx,
-                bounds: PixelRect::new(0.0, 0.0, 0.0, 0.0), // Filled after layout
-            });
-            build_coin_column(coin, count, app.time_window, theme, &spacing)
+        .enumerate()
+        .map(|(chart_idx, (coin_idx, coin))| {
+            chart_areas.push(ChartArea::new(*coin_idx));
+            build_coin_column(coin, count, app.time_window, chart_idx, theme, &spacing)
         })
         .collect();
 
@@ -103,6 +109,7 @@ fn build_coin_column(
     coin: &CoinData,
     _total_columns: usize,
     time_window: TimeWindow,
+    chart_idx: usize,
     theme: &GlTheme,
     spacing: &DetailsSpacing,
 ) -> PanelBuilder {
@@ -121,7 +128,7 @@ fn build_coin_column(
             build_price_panel(coin, time_window, theme),
         ))
         // Chart area (grows to fill, placeholder for ChartRenderer)
-        .child(titled_panel("Chart", theme, build_chart_placeholder()).flex_grow(1.0))
+        .child(titled_panel("Chart", theme, build_chart_placeholder(chart_idx)).flex_grow(1.0))
         // Indicator panel with title
         .child(titled_panel(
             "Indicators",
@@ -130,8 +137,11 @@ fn build_coin_column(
         ))
 }
 
-fn build_chart_placeholder() -> PanelBuilder {
+fn build_chart_placeholder(chart_idx: usize) -> PanelBuilder {
     // This panel reserves space for chart rendering
     // The actual chart is drawn by ChartRenderer after layout
-    panel().flex_grow(1.0)
+    // Marker ID is used to find this panel after layout and get its bounds
+    panel()
+        .flex_grow(1.0)
+        .marker_id(format!("{}{}", CHART_PANEL_PREFIX, chart_idx))
 }

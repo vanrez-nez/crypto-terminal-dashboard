@@ -10,6 +10,8 @@ pub enum AppEvent {
     MoveDown,
     MoveLeft,
     MoveRight,
+    ZoomIn,
+    ZoomOut,
     Select,
     SwitchView,
     CycleWindow,
@@ -30,9 +32,21 @@ fn map_key_event(event: KeyEvent, view: View) -> AppEvent {
     match event {
         KeyEvent::Escape | KeyEvent::Char('q') => AppEvent::Quit,
 
-        // Navigation
-        KeyEvent::Up | KeyEvent::Char('k') => AppEvent::MoveUp,
-        KeyEvent::Down | KeyEvent::Char('j') => AppEvent::MoveDown,
+        // Navigation / Zoom (Up/Down = zoom in Details view, move in Overview)
+        KeyEvent::Up | KeyEvent::Char('k') => {
+            if view == View::Details {
+                AppEvent::ZoomIn
+            } else {
+                AppEvent::MoveUp
+            }
+        }
+        KeyEvent::Down | KeyEvent::Char('j') => {
+            if view == View::Details {
+                AppEvent::ZoomOut
+            } else {
+                AppEvent::MoveDown
+            }
+        }
         KeyEvent::Left | KeyEvent::Char('h') => {
             if view == View::Details {
                 AppEvent::MoveLeft
@@ -78,6 +92,8 @@ fn apply_action(app: &mut App, action: AppEvent) {
         AppEvent::MoveRight => {
             app.scroll_candles_right();
         }
+        AppEvent::ZoomIn => app.zoom_in(),
+        AppEvent::ZoomOut => app.zoom_out(),
         AppEvent::Select => app.toggle_selection(),
         AppEvent::SwitchView => app.switch_view(),
         AppEvent::CycleWindow => app.cycle_window(),

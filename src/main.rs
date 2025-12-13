@@ -17,11 +17,13 @@ use glow::HasContext;
 
 use api::binance::{fetch_candles, granularity_to_interval, BinanceProvider};
 use api::PriceUpdate;
-use app::App;
+use app::{App, ChartType};
 use config::Config;
 use events::handle_gl_events;
 use mock::{coins_from_pairs, generate_mock_coins};
-use widgets::chart_renderer::ChartRenderer;
+use views::CHART_PANEL_PREFIX;
+use widgets::candlestick_chart::render_candlestick_chart;
+use widgets::chart_renderer::{ChartRenderer, PixelRect};
 use widgets::theme::GlTheme;
 
 // Font data embedded from fonts directory
@@ -144,7 +146,7 @@ fn run_gl_loop(
     atlas: &FontAtlas,
     text_renderer: &mut TextRenderer,
     rect_renderer: &mut RectRenderer,
-    _chart_renderer: &mut ChartRenderer, // Placeholder for Phase 4
+    chart_renderer: &mut ChartRenderer,
     scissor_stack: &mut ScissorStack,
     focus_manager: &FocusManager,
     theme: &GlTheme,
@@ -202,10 +204,48 @@ fn run_gl_loop(
             height,
         );
 
-        // 8. Chart rendering (Phase 4)
-        // Chart areas are available in view_result.chart_areas for Details view
-        // TODO: Use chart_renderer to draw charts in each chart area
-        let _ = &view_result.chart_areas; // Suppress unused warning for now
+        // 8. Chart rendering
+        if app.chart_type == ChartType::Candlestick && !view_result.chart_areas.is_empty() {
+            // Find chart panel bounds from layout
+            let chart_bounds = tree.find_panels_by_prefix(view_result.root, CHART_PANEL_PREFIX);
+
+            // Match chart areas with their resolved bounds and render
+            for chart_area in &view_result.chart_areas {
+                // Find the matching bounds by chart index
+                let marker_id = format!("{}{}", CHART_PANEL_PREFIX,
+                    view_result.chart_areas.iter().position(|a| a.coin_index == chart_area.coin_index).unwrap_or(0));
+
+                if let Some((_, x, y, w, h)) = chart_bounds.iter().find(|(id, _, _, _, _)| id == &marker_id) {
+                    if let Some(coin) = app.coins.get(chart_area.coin_index) {
+                        let rect = PixelRect::new(*x, *y, *w, *h);
+
+                        // Enable scissor test to clip chart to its bounds
+                        unsafe {
+                            display.gl.enable(glow::SCISSOR_TEST);
+                            // GL scissor uses bottom-left origin, convert from top-left
+                            let scissor_y = height as i32 - (*y as i32 + *h as i32);
+                            display.gl.scissor(*x as i32, scissor_y, *w as i32, *h as i32);
+                        }
+
+                        chart_renderer.begin();
+                        render_candlestick_chart(
+                            chart_renderer,
+                            &coin.candles,
+                            app.candle_scroll_offset,
+                            app.visible_candles,
+                            0.05, // 5% price margin
+                            rect,
+                            theme,
+                        );
+                        chart_renderer.end(&display.gl, width, height);
+
+                        unsafe {
+                            display.gl.disable(glow::SCISSOR_TEST);
+                        }
+                    }
+                }
+            }
+        }
 
         // 9. Swap buffers (vsync)
         display.swap_buffers()?;

@@ -121,6 +121,44 @@ impl LayoutTree {
     pub fn children(&self, node: NodeId) -> Vec<NodeId> {
         self.taffy.children(node).unwrap_or_default()
     }
+
+    /// Find all nodes with a panel_id matching the given prefix and return their absolute bounds
+    ///
+    /// Returns a Vec of (panel_id, x, y, width, height) tuples
+    pub fn find_panels_by_prefix(&self, root: NodeId, prefix: &str) -> Vec<(String, f32, f32, f32, f32)> {
+        let mut results = Vec::new();
+        self.find_panels_recursive(root, 0.0, 0.0, prefix, &mut results);
+        results
+    }
+
+    fn find_panels_recursive(
+        &self,
+        node: NodeId,
+        parent_x: f32,
+        parent_y: f32,
+        prefix: &str,
+        results: &mut Vec<(String, f32, f32, f32, f32)>,
+    ) {
+        let layout = self.get_layout(node);
+        let abs_x = parent_x + layout.location.x;
+        let abs_y = parent_y + layout.location.y;
+        let width = layout.size.width;
+        let height = layout.size.height;
+
+        // Check if this node has a matching panel_id
+        if let Some(style) = self.get_panel_style(node) {
+            if let Some(ref id) = style.panel_id {
+                if id.starts_with(prefix) {
+                    results.push((id.clone(), abs_x, abs_y, width, height));
+                }
+            }
+        }
+
+        // Recurse into children
+        for child in self.children(node) {
+            self.find_panels_recursive(child, abs_x, abs_y, prefix, results);
+        }
+    }
 }
 
 impl Default for LayoutTree {
