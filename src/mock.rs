@@ -1,15 +1,15 @@
-use std::collections::VecDeque;
 use crate::api::Candle;
+use std::collections::VecDeque;
 
-const CHANGE_HISTORY_SIZE: usize = 50;  // Number of samples to average
+const CHANGE_HISTORY_SIZE: usize = 50; // Number of samples to average
 
 pub struct CoinData {
     pub symbol: String,
     #[allow(dead_code)]
     pub name: String,
     pub price: f64,
-    pub prev_price: f64,           // Previous price for change detection
-    pub change_history: VecDeque<f64>,  // History of absolute price changes
+    pub prev_price: f64,               // Previous price for change detection
+    pub change_history: VecDeque<f64>, // History of absolute price changes
     pub change_24h: f64,
     pub volume_usd: f64,
     pub volume_base: f64,
@@ -231,11 +231,8 @@ impl CoinData {
         }
 
         // First average: SMA of first `period` changes
-        let mut avg_gain: f64 = changes[..period]
-            .iter()
-            .filter(|&&c| c > 0.0)
-            .sum::<f64>()
-            / period as f64;
+        let mut avg_gain: f64 =
+            changes[..period].iter().filter(|&&c| c > 0.0).sum::<f64>() / period as f64;
 
         let mut avg_loss: f64 = changes[..period]
             .iter()
@@ -314,7 +311,9 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
                 macd_signal: 8.2,
                 macd_histogram: 4.2,
             },
-            sparkline: vec![65, 66, 64, 67, 68, 70, 69, 71, 72, 70, 68, 69, 71, 73, 72, 70, 68, 69, 70, 72],
+            sparkline: vec![
+                65, 66, 64, 67, 68, 70, 69, 71, 72, 70, 68, 69, 71, 73, 72, 70, 68, 69, 70, 72,
+            ],
             candles: Vec::new(),
         },
         CoinData {
@@ -339,7 +338,9 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
                 macd_signal: -3.2,
                 macd_histogram: -1.9,
             },
-            sparkline: vec![72, 70, 68, 66, 65, 64, 62, 63, 65, 67, 69, 71, 73, 72, 70, 68, 66, 64, 65, 67],
+            sparkline: vec![
+                72, 70, 68, 66, 65, 64, 62, 63, 65, 67, 69, 71, 73, 72, 70, 68, 66, 64, 65, 67,
+            ],
             candles: Vec::new(),
         },
         CoinData {
@@ -364,7 +365,9 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
                 macd_signal: 2.1,
                 macd_histogram: 1.1,
             },
-            sparkline: vec![55, 58, 60, 63, 65, 68, 70, 72, 75, 73, 71, 74, 76, 78, 80, 82, 80, 78, 76, 75],
+            sparkline: vec![
+                55, 58, 60, 63, 65, 68, 70, 72, 75, 73, 71, 74, 76, 78, 80, 82, 80, 78, 76, 75,
+            ],
             candles: Vec::new(),
         },
         CoinData {
@@ -389,7 +392,9 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
                 macd_signal: 0.003,
                 macd_histogram: 0.002,
             },
-            sparkline: vec![50, 51, 52, 51, 50, 49, 50, 51, 52, 53, 52, 51, 50, 51, 52, 53, 54, 53, 52, 51],
+            sparkline: vec![
+                50, 51, 52, 51, 50, 49, 50, 51, 52, 53, 52, 51, 50, 51, 52, 53, 54, 53, 52, 51,
+            ],
             candles: Vec::new(),
         },
         CoinData {
@@ -414,7 +419,9 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
                 macd_signal: -0.001,
                 macd_histogram: -0.001,
             },
-            sparkline: vec![46, 45, 44, 45, 46, 45, 44, 43, 44, 45, 46, 45, 44, 45, 46, 47, 46, 45, 44, 45],
+            sparkline: vec![
+                46, 45, 44, 45, 46, 45, 44, 43, 44, 45, 46, 45, 44, 45, 46, 47, 46, 45, 44, 45,
+            ],
             candles: Vec::new(),
         },
     ]

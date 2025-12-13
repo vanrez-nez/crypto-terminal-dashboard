@@ -2,7 +2,7 @@
 //!
 //! Shows: [Overview] [Details] | Provider: Binance | [w] Window: 15m | [c] Chart: Candle | ● Live
 
-use dashboard_system::{panel, HAlign, PanelBuilder, VAlign, taffy};
+use dashboard_system::{panel, taffy, HAlign, PanelBuilder, VAlign};
 use taffy::prelude::*;
 
 use super::format::capitalize;
@@ -55,43 +55,29 @@ pub fn build_status_header(
         .child(
             panel()
                 .text("Crypto Dashboard", theme.accent, 1.2)
-                .text_align(HAlign::Left, VAlign::Center)
+                .text_align(HAlign::Left, VAlign::Center),
         )
         // View tabs
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(
-                    panel().text("[Tab:", theme.foreground_inactive, 1.0)
-                )
-                .child(
-                    panel().text("Overview", overview_color, 1.0)
-                )
-                .child(
-                    panel().text("]", theme.foreground_inactive, 1.0)
-                )
-                .child(
-                    panel().text("[", theme.foreground_inactive, 1.0)
-                )
-                .child(
-                    panel().text("Details", details_color, 1.0)
-                )
-                .child(
-                    panel().text("]", theme.foreground_inactive, 1.0)
-                )
+                .child(panel().text("[Tab:", theme.foreground_inactive, 1.0))
+                .child(panel().text("Overview", overview_color, 1.0))
+                .child(panel().text("]", theme.foreground_inactive, 1.0))
+                .child(panel().text("[", theme.foreground_inactive, 1.0))
+                .child(panel().text("Details", details_color, 1.0))
+                .child(panel().text("]", theme.foreground_inactive, 1.0)),
         )
         // Spacer
-        .child(
-            panel().flex_grow(1.0)
-        )
+        .child(panel().flex_grow(1.0))
         // Provider
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
                 .child(panel().text("Provider:", theme.foreground_muted, 1.0))
-                .child(panel().text(&provider_display, theme.foreground, 1.0))
+                .child(panel().text(&provider_display, theme.foreground, 1.0)),
         )
         // Time window
         .child(
@@ -100,7 +86,7 @@ pub fn build_status_header(
                 .gap(gap / 2.0)
                 .child(panel().text("[w]", theme.foreground_muted, 1.0))
                 .child(panel().text("Window:", theme.foreground_muted, 1.0))
-                .child(panel().text(window_display, theme.accent, 1.0))
+                .child(panel().text(window_display, theme.accent, 1.0)),
         )
         // Chart type (only in Details view)
         .child(
@@ -109,10 +95,8 @@ pub fn build_status_header(
                 .gap(gap / 2.0)
                 .child(panel().text("[c]", theme.foreground_muted, 1.0))
                 .child(panel().text("Chart:", theme.foreground_muted, 1.0))
-                .child(panel().text(chart_display, theme.accent, 1.0))
+                .child(panel().text(chart_display, theme.accent, 1.0)),
         )
         // Connection status
-        .child(
-            panel().text(status_text, status_color, 1.0)
-        )
+        .child(panel().text(status_text, status_color, 1.0))
 }

@@ -61,10 +61,10 @@ impl TimeWindow {
     /// Returns the window duration in seconds (for filtering high/low range)
     pub fn duration_secs(&self) -> i64 {
         match self {
-            TimeWindow::Min15 => 900,    // 15 minutes
-            TimeWindow::Hour1 => 3600,   // 1 hour
-            TimeWindow::Hour4 => 14400,  // 4 hours
-            TimeWindow::Day1 => 86400,   // 24 hours
+            TimeWindow::Min15 => 900,   // 15 minutes
+            TimeWindow::Hour1 => 3600,  // 1 hour
+            TimeWindow::Hour4 => 14400, // 4 hours
+            TimeWindow::Day1 => 86400,  // 24 hours
         }
     }
 }

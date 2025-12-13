@@ -13,7 +13,9 @@ pub mod theme;
 pub mod titled_panel;
 
 // Re-exports
-pub use chart_renderer::{ChartBounds, ChartRenderer, PixelRect, VisibleRange, calculate_visible_range};
+pub use chart_renderer::{
+    calculate_visible_range, ChartBounds, ChartRenderer, PixelRect, VisibleRange,
+};
 pub use coin_table::build_coin_table;
 pub use control_footer::{build_control_footer, build_details_footer, build_overview_footer};
 pub use format::*;

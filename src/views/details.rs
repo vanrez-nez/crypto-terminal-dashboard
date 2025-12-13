@@ -1,18 +1,13 @@
 //! Details view - price charts and indicators for selected coins
 
-use dashboard_system::{panel, PanelBuilder, taffy};
+use dashboard_system::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
 use crate::app::App;
 use crate::mock::CoinData;
 use crate::widgets::{
-    build_status_header,
-    build_details_footer,
-    build_price_panel,
-    build_indicator_panel,
-    titled_panel,
-    GlTheme,
-    PixelRect,
+    build_details_footer, build_indicator_panel, build_price_panel, build_status_header,
+    titled_panel, GlTheme, PixelRect,
 };
 
 /// Represents a chart area that needs to be rendered separately
@@ -20,6 +15,31 @@ use crate::widgets::{
 pub struct ChartArea {
     pub coin_index: usize,
     pub bounds: PixelRect,
+}
+
+/// Spacing configuration for the details layout.
+#[derive(Clone, Copy)]
+struct DetailsSpacing {
+    outer_padding: f32,
+    vertical_gap: f32,
+    column_gap: f32,
+    footer_gap: f32,
+}
+
+impl DetailsSpacing {
+    fn new(theme: &GlTheme) -> Self {
+        let base = theme.panel_gap;
+        Self {
+            outer_padding: base,
+            vertical_gap: base,
+            column_gap: base,
+            footer_gap: base * 2.0,
+        }
+    }
+
+    fn footer_margin(&self) -> f32 {
+        (self.footer_gap - self.vertical_gap).max(0.0)
+    }
 }
 
 pub fn build_details_view(
@@ -31,7 +51,7 @@ pub fn build_details_view(
     // Use active_coins which falls back to highlighted coin if none selected
     let active_coins = app.active_coins();
     let count = active_coins.len();
-    let gap = theme.panel_gap;
+    let spacing = DetailsSpacing::new(theme);
 
     let mut chart_areas = Vec::new();
 
@@ -43,7 +63,7 @@ pub fn build_details_view(
                 coin_index: *idx,
                 bounds: PixelRect::new(0.0, 0.0, 0.0, 0.0), // Filled after layout
             });
-            build_coin_column(coin, count, theme)
+            build_coin_column(coin, count, theme, &spacing)
         })
         .collect();
 
@@ -51,8 +71,8 @@ pub fn build_details_view(
         .width(length(width))
         .height(length(height))
         .flex_direction(FlexDirection::Column)
-        .gap(gap)
-        .padding_all(gap)
+        .gap(spacing.vertical_gap)
+        .padding_all(spacing.outer_padding)
         .background(theme.background)
         // Header
         .child(build_status_header(
@@ -68,11 +88,11 @@ pub fn build_details_view(
             panel()
                 .flex_grow(1.0)
                 .flex_direction(FlexDirection::Row)
-                .gap(gap)
-                .children(columns)
+                .gap(spacing.column_gap)
+                .children(columns),
         )
         // Footer
-        .child(build_details_footer(theme));
+        .child(build_details_footer(theme).margin(spacing.footer_margin(), 0.0, 0.0, 0.0));
 
     (view, chart_areas)
 }
@@ -81,8 +101,9 @@ fn build_coin_column(
     coin: &CoinData,
     total_columns: usize,
     theme: &GlTheme,
+    spacing: &DetailsSpacing,
 ) -> PanelBuilder {
-    let gap = theme.panel_gap;
+    let gap = spacing.vertical_gap;
     let symbol = &coin.symbol;
 
     panel()
@@ -90,37 +111,25 @@ fn build_coin_column(
         .flex_direction(FlexDirection::Column)
         .gap(gap)
         // Price panel with title
-        .child(
-            titled_panel(
-                &format!("{}/USD", symbol),
-                theme,
-                build_price_panel(coin, theme),
-            )
-        )
+        .child(titled_panel(
+            &format!("{}/USD", symbol),
+            theme,
+            build_price_panel(coin, theme),
+        ))
         // Chart area (grows to fill, placeholder for ChartRenderer)
-        .child(
-            titled_panel(
-                "Chart",
-                theme,
-                build_chart_placeholder(theme),
-            )
-            .flex_grow(1.0)
-        )
+        .child(titled_panel("Chart", theme, build_chart_placeholder(theme)).flex_grow(1.0))
         // Indicator panel with title
-        .child(
-            titled_panel(
-                "Indicators",
-                theme,
-                build_indicator_panel(&coin.indicators, theme),
-            )
-        )
+        .child(titled_panel(
+            "Indicators",
+            theme,
+            build_indicator_panel(&coin.indicators, theme),
+        ))
 }
 
 fn build_chart_placeholder(theme: &GlTheme) -> PanelBuilder {
     // This panel reserves space for chart rendering
     // The actual chart is drawn by ChartRenderer after layout
-    panel()
-        .flex_grow(1.0)
+    panel().flex_grow(1.0)
 }
 
 /// Calculate chart bounds from known layout constants

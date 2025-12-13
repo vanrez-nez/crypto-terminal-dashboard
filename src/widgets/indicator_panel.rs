@@ -1,6 +1,6 @@
 //! Indicator panel widget displaying RSI, EMA, and MACD values
 
-use dashboard_system::{panel, HAlign, PanelBuilder, VAlign, taffy};
+use dashboard_system::{panel, taffy, HAlign, PanelBuilder, VAlign};
 use taffy::prelude::*;
 
 use super::theme::GlTheme;
@@ -24,11 +24,11 @@ pub fn build_indicator_panel(indicators: &IndicatorData, theme: &GlTheme) -> Pan
                     panel()
                         .width(length(40.0))
                         .text("RSI", theme.indicator_primary, 0.9)
-                        .text_align(HAlign::Left, VAlign::Center)
+                        .text_align(HAlign::Left, VAlign::Center),
                 )
                 .child(build_indicator_value("6", indicators.rsi_6, theme))
                 .child(build_indicator_value("12", indicators.rsi_12, theme))
-                .child(build_indicator_value("24", indicators.rsi_24, theme))
+                .child(build_indicator_value("24", indicators.rsi_24, theme)),
         )
         // EMA row
         .child(
@@ -40,11 +40,11 @@ pub fn build_indicator_panel(indicators: &IndicatorData, theme: &GlTheme) -> Pan
                     panel()
                         .width(length(40.0))
                         .text("EMA", theme.indicator_secondary, 0.9)
-                        .text_align(HAlign::Left, VAlign::Center)
+                        .text_align(HAlign::Left, VAlign::Center),
                 )
                 .child(build_indicator_value("7", indicators.ema_7, theme))
                 .child(build_indicator_value("25", indicators.ema_25, theme))
-                .child(build_indicator_value("99", indicators.ema_99, theme))
+                .child(build_indicator_value("99", indicators.ema_99, theme)),
         )
         // MACD row (optional, only if available)
         .child(
@@ -56,11 +56,11 @@ pub fn build_indicator_panel(indicators: &IndicatorData, theme: &GlTheme) -> Pan
                     panel()
                         .width(length(40.0))
                         .text("MACD", theme.indicator_tertiary, 0.9)
-                        .text_align(HAlign::Left, VAlign::Center)
+                        .text_align(HAlign::Left, VAlign::Center),
                 )
                 .child(build_macd_value("Line", indicators.macd_line, theme))
                 .child(build_macd_value("Sig", indicators.macd_signal, theme))
-                .child(build_macd_histogram(indicators.macd_histogram, theme))
+                .child(build_macd_histogram(indicators.macd_histogram, theme)),
         )
 }
 
@@ -75,12 +75,12 @@ fn build_indicator_value(label: &str, value: f64, theme: &GlTheme) -> PanelBuild
         .child(
             panel()
                 .text(label, theme.foreground_muted, 0.8)
-                .text_align(HAlign::Left, VAlign::Center)
+                .text_align(HAlign::Left, VAlign::Center),
         )
         .child(
             panel()
                 .text(&value_text, value_color, 0.9)
-                .text_align(HAlign::Left, VAlign::Center)
+                .text_align(HAlign::Left, VAlign::Center),
         )
 }
 
@@ -99,12 +99,12 @@ fn build_macd_value(label: &str, value: f64, theme: &GlTheme) -> PanelBuilder {
         .child(
             panel()
                 .text(label, theme.foreground_muted, 0.8)
-                .text_align(HAlign::Left, VAlign::Center)
+                .text_align(HAlign::Left, VAlign::Center),
         )
         .child(
             panel()
                 .text(&value_text, value_color, 0.9)
-                .text_align(HAlign::Left, VAlign::Center)
+                .text_align(HAlign::Left, VAlign::Center),
         )
 }
 
@@ -123,12 +123,12 @@ fn build_macd_histogram(value: f64, theme: &GlTheme) -> PanelBuilder {
         .child(
             panel()
                 .text("Hist", theme.foreground_muted, 0.8)
-                .text_align(HAlign::Left, VAlign::Center)
+                .text_align(HAlign::Left, VAlign::Center),
         )
         .child(
             panel()
                 .text(&value_text, value_color, 0.9)
-                .text_align(HAlign::Left, VAlign::Center)
+                .text_align(HAlign::Left, VAlign::Center),
         )
 }
 

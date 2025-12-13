@@ -1,6 +1,6 @@
 //! Price panel widget displaying current price, 24h change, and range bar
 
-use dashboard_system::{panel, HAlign, PanelBuilder, VAlign, taffy};
+use dashboard_system::{panel, taffy, HAlign, PanelBuilder, VAlign};
 use taffy::prelude::*;
 
 use super::format::{format_change, format_price, format_price_short, price_change_color};
@@ -42,15 +42,9 @@ pub fn build_price_panel(coin: &CoinData, theme: &GlTheme) -> PanelBuilder {
                 .flex_direction(FlexDirection::Row)
                 .align_items(AlignItems::Center)
                 .gap(gap)
-                .child(
-                    panel().text(&coin.symbol, theme.accent, 1.2)
-                )
-                .child(
-                    panel().text(&price_text, price_color, 1.1)
-                )
-                .child(
-                    panel().text(arrow, change_color, 1.0)
-                )
+                .child(panel().text(&coin.symbol, theme.accent, 1.2))
+                .child(panel().text(&price_text, price_color, 1.1))
+                .child(panel().text(arrow, change_color, 1.0)),
         )
         // Change percentage row
         .child(
@@ -58,15 +52,16 @@ pub fn build_price_panel(coin: &CoinData, theme: &GlTheme) -> PanelBuilder {
                 .width(percent(1.0))
                 .flex_direction(FlexDirection::Row)
                 .gap(gap)
-                .child(
-                    panel().text("24h:", theme.foreground_muted, 0.9)
-                )
-                .child(
-                    panel().text(&change_text, change_color, 0.9)
-                )
+                .child(panel().text("24h:", theme.foreground_muted, 0.9))
+                .child(panel().text(&change_text, change_color, 0.9)),
         )
         // Range bar row
-        .child(build_range_bar(coin.low_24h, coin.high_24h, range_pos, theme))
+        .child(build_range_bar(
+            coin.low_24h,
+            coin.high_24h,
+            range_pos,
+            theme,
+        ))
 }
 
 /// Build a range bar showing price position within 24h range
@@ -88,7 +83,7 @@ fn build_range_bar(low: f64, high: f64, position: f64, theme: &GlTheme) -> Panel
             panel()
                 .width(length(60.0))
                 .text(&low_text, theme.foreground_muted, 0.8)
-                .text_align(HAlign::Left, VAlign::Center)
+                .text_align(HAlign::Left, VAlign::Center),
         )
         // Bar container
         .child(
@@ -102,21 +97,21 @@ fn build_range_bar(low: f64, high: f64, position: f64, theme: &GlTheme) -> Panel
                     panel()
                         .width(percent(left_pct / 100.0))
                         .height(percent(1.0))
-                        .background(theme.accent)
+                        .background(theme.accent),
                 )
                 // Marker
                 .child(
                     panel()
                         .width(length(4.0))
                         .height(percent(1.0))
-                        .background(theme.foreground)
-                )
+                        .background(theme.foreground),
+                ),
         )
         // High label
         .child(
             panel()
                 .width(length(60.0))
                 .text(&high_text, theme.foreground_muted, 0.8)
-                .text_align(HAlign::Right, VAlign::Center)
+                .text_align(HAlign::Right, VAlign::Center),
         )
 }

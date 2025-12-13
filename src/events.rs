@@ -1,7 +1,7 @@
 //! Keyboard event handling for OpenGL dashboard
 
-use dashboard_system::{KeyEvent, KeyboardInput};
 use crate::app::{App, View};
+use dashboard_system::{KeyEvent, KeyboardInput};
 
 /// Key event types we care about
 pub enum AppEvent {

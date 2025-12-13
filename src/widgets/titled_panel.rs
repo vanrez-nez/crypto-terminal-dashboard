@@ -1,6 +1,6 @@
 //! Titled panel widget - creates panels with a title on the border (like HTML fieldset legend)
 
-use dashboard_system::{panel, HAlign, PanelBuilder, VAlign, taffy};
+use dashboard_system::{panel, taffy, HAlign, PanelBuilder, VAlign};
 use taffy::prelude::*;
 
 use super::theme::{Color, GlTheme};
@@ -14,17 +14,13 @@ use super::theme::{Color, GlTheme};
 /// - Outer container
 ///   - Title (naturally sized, with background to mask border)
 ///   - Content panel with border, pulled up by half title height so border aligns with title center
-pub fn titled_panel(
-    title: &str,
-    theme: &GlTheme,
-    content: PanelBuilder,
-) -> PanelBuilder {
+pub fn titled_panel(title: &str, theme: &GlTheme, content: PanelBuilder) -> PanelBuilder {
     // Calculate offset to align border with title center
     // Title text is 15% smaller than base font
     let text_scale = 0.85;
     let font_height = theme.font_size * text_scale;
     let title_padding_v = 2.0; // Vertical padding for title background
-    // Border should align with center of title text
+                               // Border should align with center of title text
     let title_center_offset = title_padding_v + font_height / 2.0;
     let title_left = theme.panel_padding + 4.0;
 
@@ -37,10 +33,15 @@ pub fn titled_panel(
                 .background(theme.background_panel)
                 .border_solid(1.0, theme.border)
                 // Extra top padding to account for title overlap
-                .padding(theme.panel_padding + title_center_offset, theme.panel_padding, theme.panel_padding, theme.panel_padding)
+                .padding(
+                    theme.panel_padding + title_center_offset,
+                    theme.panel_padding,
+                    theme.panel_padding,
+                    theme.panel_padding,
+                )
                 .margin(title_center_offset, 0.0, 0.0, 0.0) // Top margin for title area
                 .flex_direction(FlexDirection::Column)
-                .child(content)
+                .child(content),
         )
         // Title - absolute positioned, renders ON TOP of border
         .child(
@@ -49,7 +50,7 @@ pub fn titled_panel(
                 .background(theme.background) // Theme background masks border
                 .padding(title_padding_v, 6.0, title_padding_v, 6.0)
                 .text(&title.to_uppercase(), theme.accent, text_scale)
-                .text_align(HAlign::Left, VAlign::Center)
+                .text_align(HAlign::Left, VAlign::Center),
         )
 }
 
@@ -75,10 +76,15 @@ pub fn titled_panel_colored(
                 .flex_grow(1.0)
                 .background(theme.background_panel)
                 .border_solid(1.0, theme.border)
-                .padding(theme.panel_padding + title_center_offset, theme.panel_padding, theme.panel_padding, theme.panel_padding)
+                .padding(
+                    theme.panel_padding + title_center_offset,
+                    theme.panel_padding,
+                    theme.panel_padding,
+                    theme.panel_padding,
+                )
                 .margin(title_center_offset, 0.0, 0.0, 0.0)
                 .flex_direction(FlexDirection::Column)
-                .child(content)
+                .child(content),
         )
         // Title - absolute positioned, renders ON TOP of border
         .child(
@@ -87,6 +93,6 @@ pub fn titled_panel_colored(
                 .background(theme.background) // Theme background masks border
                 .padding(title_padding_v, 6.0, title_padding_v, 6.0)
                 .text(&title.to_uppercase(), title_color, text_scale)
-                .text_align(HAlign::Left, VAlign::Center)
+                .text_align(HAlign::Left, VAlign::Center),
         )
 }

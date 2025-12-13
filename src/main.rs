@@ -9,8 +9,8 @@ mod widgets;
 use tokio::sync::mpsc;
 
 use dashboard_system::{
-    Display, FontAtlas, FocusManager, KeyboardInput, LayoutTree, RectRenderer, ScissorStack, TextRenderer,
-    glow, panel, render, taffy,
+    glow, panel, render, taffy, Display, FocusManager, FontAtlas, KeyboardInput, LayoutTree,
+    RectRenderer, ScissorStack, TextRenderer,
 };
 use glow::HasContext;
 
@@ -91,10 +91,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Ok(candles) => {
                         // Extract symbol (e.g., "BTCUSDT" -> "BTC")
                         let sym = symbol.trim_end_matches("USDT").to_string();
-                        let _ = candle_tx.send(PriceUpdate::Candles { symbol: sym, candles }).await;
+                        let _ = candle_tx
+                            .send(PriceUpdate::Candles {
+                                symbol: sym,
+                                candles,
+                            })
+                            .await;
                     }
                     Err(e) => {
-                        let _ = candle_tx.send(PriceUpdate::Error(format!("Candle fetch error: {}", e))).await;
+                        let _ = candle_tx
+                            .send(PriceUpdate::Error(format!("Candle fetch error: {}", e)))
+                            .await;
                     }
                 }
             }
@@ -220,7 +227,7 @@ fn build_current_view(
     height: f32,
 ) -> ViewResult {
     use crate::app::View;
-    use crate::views::{build_overview_view, build_details_view};
+    use crate::views::{build_details_view, build_overview_view};
 
     match app.view {
         View::Overview => ViewResult {

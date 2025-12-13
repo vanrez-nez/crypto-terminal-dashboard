@@ -121,7 +121,11 @@ pub fn price_change_color(current: f64, previous: f64, avg_change: f64, theme: &
 
     // No history yet - use low intensity
     if avg_change <= 0.0 {
-        return if is_up { theme.price_up_low } else { theme.price_down_low };
+        return if is_up {
+            theme.price_up_low
+        } else {
+            theme.price_down_low
+        };
     }
 
     // Compare change to average and determine level

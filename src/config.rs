@@ -28,7 +28,10 @@ pub struct ThemeConfig {
 impl ThemeConfig {
     /// Get a color value by key, returns None if not found or empty
     pub fn get(&self, key: &str) -> Option<&str> {
-        self.colors.get(key).map(|s| s.as_str()).filter(|s| !s.is_empty())
+        self.colors
+            .get(key)
+            .map(|s| s.as_str())
+            .filter(|s| !s.is_empty())
     }
 }
 

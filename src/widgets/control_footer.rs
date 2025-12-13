@@ -1,6 +1,6 @@
 //! Control footer widget displaying keyboard shortcuts and selection info
 
-use dashboard_system::{panel, HAlign, PanelBuilder, VAlign, taffy};
+use dashboard_system::{panel, taffy, HAlign, PanelBuilder, VAlign};
 use taffy::prelude::*;
 
 use super::theme::GlTheme;
@@ -25,14 +25,11 @@ pub fn build_overview_footer(
         .align_items(AlignItems::Center)
         .gap(gap * 2.0)
         // Selection count
-        .child(
-            panel()
-                .text(
-                    &format!("Selected: {}/{}", selected_count, total_count),
-                    theme.foreground,
-                    1.0,
-                )
-        )
+        .child(panel().text(
+            &format!("Selected: {}/{}", selected_count, total_count),
+            theme.foreground,
+            1.0,
+        ))
         // Separator
         .child(panel().text("│", theme.foreground_muted, 1.0))
         // Space toggle
@@ -41,7 +38,7 @@ pub fn build_overview_footer(
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
                 .child(panel().text("[Space]", theme.accent_secondary, 1.0))
-                .child(panel().text("Toggle", theme.foreground, 1.0))
+                .child(panel().text("Toggle", theme.foreground, 1.0)),
         )
         // Enter for details
         .child(
@@ -49,7 +46,7 @@ pub fn build_overview_footer(
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
                 .child(panel().text("[Enter]", theme.accent_secondary, 1.0))
-                .child(panel().text("View Details", theme.foreground, 1.0))
+                .child(panel().text("View Details", theme.foreground, 1.0)),
         )
         // Arrow keys
         .child(
@@ -57,7 +54,7 @@ pub fn build_overview_footer(
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
                 .child(panel().text("[↑↓]", theme.accent_secondary, 1.0))
-                .child(panel().text("Navigate", theme.foreground, 1.0))
+                .child(panel().text("Navigate", theme.foreground, 1.0)),
         )
         // Quit
         .child(
@@ -65,7 +62,7 @@ pub fn build_overview_footer(
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
                 .child(panel().text("[q]", theme.accent_secondary, 1.0))
-                .child(panel().text("Quit", theme.foreground, 1.0))
+                .child(panel().text("Quit", theme.foreground, 1.0)),
         )
 }
 
@@ -89,7 +86,7 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
                 .child(panel().text("[Tab]", theme.accent_secondary, 1.0))
-                .child(panel().text("Overview", theme.foreground, 1.0))
+                .child(panel().text("Overview", theme.foreground, 1.0)),
         )
         // Separator
         .child(panel().text("│", theme.foreground_muted, 1.0))
@@ -99,7 +96,7 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
                 .child(panel().text("[←→]", theme.accent_secondary, 1.0))
-                .child(panel().text("Scroll Chart", theme.foreground, 1.0))
+                .child(panel().text("Scroll Chart", theme.foreground, 1.0)),
         )
         // Reset scroll
         .child(
@@ -107,7 +104,7 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
                 .child(panel().text("[Home/r]", theme.accent_secondary, 1.0))
-                .child(panel().text("Reset", theme.foreground, 1.0))
+                .child(panel().text("Reset", theme.foreground, 1.0)),
         )
         // Window change
         .child(
@@ -115,7 +112,7 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
                 .child(panel().text("[w]", theme.accent_secondary, 1.0))
-                .child(panel().text("Window", theme.foreground, 1.0))
+                .child(panel().text("Window", theme.foreground, 1.0)),
         )
         // Chart type
         .child(
@@ -123,7 +120,7 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
                 .child(panel().text("[c]", theme.accent_secondary, 1.0))
-                .child(panel().text("Chart Type", theme.foreground, 1.0))
+                .child(panel().text("Chart Type", theme.foreground, 1.0)),
         )
         // Quit
         .child(
@@ -131,7 +128,7 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
                 .child(panel().text("[q]", theme.accent_secondary, 1.0))
-                .child(panel().text("Quit", theme.foreground, 1.0))
+                .child(panel().text("Quit", theme.foreground, 1.0)),
         )
 }
 

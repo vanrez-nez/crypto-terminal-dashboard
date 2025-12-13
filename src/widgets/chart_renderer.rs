@@ -54,7 +54,10 @@ impl ChartRenderer {
             gl.shader_source(vs, VERTEX_SHADER);
             gl.compile_shader(vs);
             if !gl.get_shader_compile_status(vs) {
-                return Err(format!("Vertex shader error: {}", gl.get_shader_info_log(vs)));
+                return Err(format!(
+                    "Vertex shader error: {}",
+                    gl.get_shader_info_log(vs)
+                ));
             }
 
             let fs = gl
@@ -63,7 +66,10 @@ impl ChartRenderer {
             gl.shader_source(fs, FRAGMENT_SHADER);
             gl.compile_shader(fs);
             if !gl.get_shader_compile_status(fs) {
-                return Err(format!("Fragment shader error: {}", gl.get_shader_info_log(fs)));
+                return Err(format!(
+                    "Fragment shader error: {}",
+                    gl.get_shader_info_log(fs)
+                ));
             }
 
             let program = gl
@@ -73,7 +79,10 @@ impl ChartRenderer {
             gl.attach_shader(program, fs);
             gl.link_program(program);
             if !gl.get_program_link_status(program) {
-                return Err(format!("Program link error: {}", gl.get_program_info_log(program)));
+                return Err(format!(
+                    "Program link error: {}",
+                    gl.get_program_info_log(program)
+                ));
             }
 
             gl.delete_shader(vs);
@@ -322,12 +331,7 @@ impl ChartRenderer {
     }
 
     /// Draw a filled area under a polyline (for area charts)
-    pub fn draw_filled_area(
-        &mut self,
-        points: &[(f32, f32)],
-        baseline_y: f32,
-        color: [f32; 4],
-    ) {
+    pub fn draw_filled_area(&mut self, points: &[(f32, f32)], baseline_y: f32, color: [f32; 4]) {
         if points.len() < 2 {
             return;
         }
@@ -431,10 +435,22 @@ fn ortho_projection(left: f32, right: f32, bottom: f32, top: f32) -> [f32; 16] {
     let tz = -(far + near) / (far - near);
 
     [
-        2.0 / (right - left), 0.0, 0.0, 0.0,
-        0.0, 2.0 / (top - bottom), 0.0, 0.0,
-        0.0, 0.0, -2.0 / (far - near), 0.0,
-        tx, ty, tz, 1.0,
+        2.0 / (right - left),
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        2.0 / (top - bottom),
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -2.0 / (far - near),
+        0.0,
+        tx,
+        ty,
+        tz,
+        1.0,
     ]
 }
 
@@ -448,7 +464,12 @@ pub struct ChartBounds {
 
 impl ChartBounds {
     pub fn new(x_min: f64, x_max: f64, y_min: f64, y_max: f64) -> Self {
-        Self { x_min, x_max, y_min, y_max }
+        Self {
+            x_min,
+            x_max,
+            y_min,
+            y_max,
+        }
     }
 
     /// Create bounds from a slice of (x, y) points
@@ -469,7 +490,12 @@ impl ChartBounds {
             y_max = y_max.max(y);
         }
 
-        Some(Self { x_min, x_max, y_min, y_max })
+        Some(Self {
+            x_min,
+            x_max,
+            y_min,
+            y_max,
+        })
     }
 
     /// Add padding to bounds (as a fraction, e.g., 0.05 for 5%)
@@ -530,7 +556,12 @@ pub struct PixelRect {
 
 impl PixelRect {
     pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
-        Self { x, y, width, height }
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
     }
 }
 
