@@ -10,6 +10,7 @@ pub mod indicator_panel;
 pub mod price_panel;
 pub mod status_header;
 pub mod theme;
+pub mod titled_panel;
 
 // Re-exports
 pub use chart_renderer::{ChartBounds, ChartRenderer, PixelRect, VisibleRange, calculate_visible_range};
@@ -20,3 +21,4 @@ pub use indicator_panel::build_indicator_panel;
 pub use price_panel::build_price_panel;
 pub use status_header::build_status_header;
 pub use theme::{Color, GlTheme};
+pub use titled_panel::{titled_panel, titled_panel_colored};

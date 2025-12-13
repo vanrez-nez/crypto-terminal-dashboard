@@ -5,7 +5,7 @@ use crate::config::ThemeConfig;
 /// RGBA color for OpenGL rendering (values 0.0-1.0)
 pub type Color = [f32; 4];
 
-/// Theme colors for the crypto dashboard
+/// Theme colors and spacing for the crypto dashboard
 #[derive(Clone, Copy)]
 pub struct GlTheme {
     pub foreground: Color,
@@ -38,6 +38,11 @@ pub struct GlTheme {
     pub background_panel: Color,
     pub border: Color,
     pub border_focus: Color,
+    // Spacing - single point of configuration
+    pub panel_gap: f32,
+    pub panel_padding: f32,
+    // Font configuration
+    pub font_size: f32,
 }
 
 impl Default for GlTheme {
@@ -75,6 +80,11 @@ impl Default for GlTheme {
             background_panel: [0.08, 0.08, 0.10, 1.0],  // Panel background
             border: [0.25, 0.28, 0.32, 1.0],            // Subtle border
             border_focus: [1.0, 0.8, 0.2, 1.0],         // Focus yellow
+            // Spacing
+            panel_gap: 8.0,
+            panel_padding: 8.0,
+            // Font
+            font_size: 17.0,
         }
     }
 }
@@ -112,6 +122,11 @@ impl GlTheme {
             background_panel: parse_color(config.get("background.panel")).unwrap_or(d.background_panel),
             border: parse_color(config.get("border")).unwrap_or(d.border),
             border_focus: parse_color(config.get("border.focus")).unwrap_or(d.border_focus),
+            // Spacing uses defaults
+            panel_gap: d.panel_gap,
+            panel_padding: d.panel_padding,
+            // Font uses defaults
+            font_size: d.font_size,
         }
     }
 }

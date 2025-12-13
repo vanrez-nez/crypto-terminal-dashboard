@@ -25,7 +25,7 @@ use widgets::theme::GlTheme;
 
 // Font data embedded from dashboard-system
 const FONT_DATA: &[u8] = include_bytes!("../dashboard-system/assets/Roboto-Medium.ttf");
-const FONT_SIZE: f32 = 24.0;
+const FONT_SIZE: f32 = 17.0;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create tokio runtime manually (not async main)
@@ -167,7 +167,7 @@ fn run_gl_loop(
         // 5. Build layout tree
         let mut tree = LayoutTree::new();
         let view_result = build_current_view(&mut tree, app, theme, width as f32, height as f32);
-        tree.compute(view_result.root, width as f32, height as f32);
+        tree.compute_with_text(view_result.root, width as f32, height as f32, atlas);
 
         // 6. Clear screen
         unsafe {

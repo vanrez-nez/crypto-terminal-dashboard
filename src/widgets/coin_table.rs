@@ -31,8 +31,6 @@ pub fn build_coin_table(
     panel()
         .width(percent(1.0))
         .flex_grow(1.0)
-        .background(theme.background_panel)
-        .border_solid(1.0, theme.border)
         .flex_direction(FlexDirection::Column)
         .overflow_scroll()
         .clip(true)

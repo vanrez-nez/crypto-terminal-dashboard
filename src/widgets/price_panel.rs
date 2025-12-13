@@ -32,10 +32,6 @@ pub fn build_price_panel(coin: &CoinData, theme: &GlTheme) -> PanelBuilder {
 
     panel()
         .width(percent(1.0))
-        .height(length(80.0))
-        .background(theme.background_panel)
-        .border_solid(1.0, theme.border)
-        .padding_all(8.0)
         .flex_direction(FlexDirection::Column)
         .gap(4.0)
         // Symbol and price row
