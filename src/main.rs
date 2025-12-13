@@ -210,17 +210,26 @@ fn run_gl_loop(
 
 fn build_current_view(
     tree: &mut LayoutTree,
-    _app: &App,
+    app: &App,
     theme: &GlTheme,
     width: f32,
     height: f32,
 ) -> taffy::NodeId {
     use taffy::prelude::*;
+    use crate::app::View;
+    use crate::views::build_overview_view;
 
-    // Temporary: solid background panel (will be replaced in Phase 2/3)
-    panel()
-        .width(length(width))
-        .height(length(height))
-        .background(theme.background)
-        .build(tree)
+    match app.view {
+        View::Overview => {
+            build_overview_view(app, theme, width, height).build(tree)
+        }
+        View::Details => {
+            // Placeholder until Phase 3
+            panel()
+                .width(length(width))
+                .height(length(height))
+                .background(theme.background)
+                .build(tree)
+        }
+    }
 }
