@@ -101,7 +101,7 @@ pub fn build_details_view(
 
 fn build_coin_column(
     coin: &CoinData,
-    total_columns: usize,
+    _total_columns: usize,
     time_window: TimeWindow,
     theme: &GlTheme,
     spacing: &DetailsSpacing,
@@ -110,14 +110,15 @@ fn build_coin_column(
     let symbol = &coin.symbol;
 
     panel()
-        .flex_grow(1.0 / total_columns as f32)
+        .flex_basis(length(0.0)) // Force equal width distribution
+        .flex_grow(1.0)
         .flex_direction(FlexDirection::Column)
         .gap(gap)
         // Price panel with title
         .child(titled_panel(
             &format!("{}/USD ({})", symbol, time_window.as_str()),
             theme,
-            build_price_panel(coin, theme),
+            build_price_panel(coin, time_window, theme),
         ))
         // Chart area (grows to fill, placeholder for ChartRenderer)
         .child(titled_panel("Chart", theme, build_chart_placeholder()).flex_grow(1.0))

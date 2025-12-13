@@ -79,6 +79,40 @@ impl CoinData {
         sum / self.change_history.len() as f64
     }
 
+    /// Get high/low for the current window period (last candle)
+    /// For 15m window: H/L of the last 15 minutes
+    /// For 1h window: H/L of the last hour, etc.
+    pub fn candle_high_low(&self) -> (f64, f64) {
+        if let Some(last) = self.candles.last() {
+            // Use last candle's high/low (current period)
+            // Filter out invalid values
+            let high = if last.high > 0.0 { last.high } else { self.high_24h };
+            let low = if last.low > 0.0 { last.low } else { self.low_24h };
+            (high, low)
+        } else {
+            (self.high_24h, self.low_24h)
+        }
+    }
+
+    /// Calculate percentage change from one period ago to current price
+    /// For a 15m window, this is the change from 15 minutes ago
+    /// For a 1h window, this is the change from 1 hour ago, etc.
+    pub fn candle_change(&self) -> f64 {
+        // Need at least 2 candles: previous completed + current
+        if self.candles.len() < 2 {
+            return self.change_24h;
+        }
+        // Second-to-last candle represents one period ago (last completed candle)
+        // Last candle is the current/in-progress candle
+        let prev_candle = &self.candles[self.candles.len() - 2];
+        let old_price = prev_candle.close;
+        if old_price > 0.0 {
+            ((self.price - old_price) / old_price) * 100.0
+        } else {
+            0.0
+        }
+    }
+
     /// Update current price from WebSocket ticker and recalculate indicators
     pub fn update_price(&mut self, price: f64) {
         // Track change history for dynamic color gradient

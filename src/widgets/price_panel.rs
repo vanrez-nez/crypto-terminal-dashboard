@@ -1,6 +1,7 @@
 //! Price panel widget displaying current price, 24h change, and range bar
+//! Layout: 3 columns inline - [Price▲] | [CHANGE: +X%] | [L:xxx ▼ H:xxx]
 
-use crate::base::layout::{HAlign, VAlign};
+use crate::app::TimeWindow;
 use crate::base::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
@@ -8,126 +9,122 @@ use super::format::{format_change, format_price, format_price_short, price_chang
 use super::theme::GlTheme;
 use crate::mock::CoinData;
 
-/// Build the price panel for a coin
-pub fn build_price_panel(coin: &CoinData, theme: &GlTheme) -> PanelBuilder {
+/// Build the price panel - 3 inline columns: Price+Arrow, Change, High/Low
+pub fn build_price_panel(coin: &CoinData, time_window: TimeWindow, theme: &GlTheme) -> PanelBuilder {
     let price_text = format_price(coin.price);
-    let change_text = format_change(coin.change_24h);
     let gap = theme.panel_gap;
 
-    // Calculate price color based on tick direction
+    // For 1d window, use Binance's actual 24h values (rolling, accurate)
+    // For other windows, calculate from candles
+    let (change_pct, high, low) = match time_window {
+        TimeWindow::Day1 => (coin.change_24h, coin.high_24h, coin.low_24h),
+        _ => {
+            let change = coin.candle_change();
+            let (h, l) = coin.candle_high_low();
+            (change, h, l)
+        }
+    };
+
+    let change_text = format_change(change_pct);
+
+    // Price color based on tick direction
     let avg_change = coin.avg_change();
     let price_color = price_change_color(coin.price, coin.prev_price, avg_change, theme);
 
+    // Arrow for price direction (always show placeholder for stable width)
     let price_delta = coin.price - coin.prev_price;
-    let arrow_panel = if price_delta.abs() > f64::EPSILON {
-        let arrow = if price_delta > 0.0 { "▲" } else { "▼" };
-        Some(
-            panel()
-                .text(arrow, price_color, theme.font_big)
-                .text_align(HAlign::Left, VAlign::Center),
-        )
+    let (arrow, arrow_color) = if price_delta > f64::EPSILON {
+        ("▲", price_color)
+    } else if price_delta < -f64::EPSILON {
+        ("▼", price_color)
     } else {
-        None
+        (" ", theme.background) // Invisible placeholder
     };
 
-    let change_color = if coin.change_24h > 0.0 {
+    let change_color = if change_pct > 0.0 {
         theme.positive
-    } else if coin.change_24h < 0.0 {
+    } else if change_pct < 0.0 {
         theme.negative
     } else {
         theme.foreground_muted
     };
 
-    // Calculate range bar position (0.0 to 1.0)
-    let range = coin.high_24h - coin.low_24h;
+    // Range bar position (0.0 to 1.0)
+    let range = high - low;
     let range_pos = if range > 0.0 {
-        ((coin.price - coin.low_24h) / range).clamp(0.0, 1.0)
+        ((coin.price - low) / range).clamp(0.0, 1.0)
     } else {
         0.5
     };
 
-    panel()
-        .width(percent(1.0))
-        .flex_direction(FlexDirection::Column)
-        .gap(gap / 2.0)
-        .child({
-            let mut row = panel()
-                .width(percent(1.0))
-                .flex_direction(FlexDirection::Row)
-                .align_items(AlignItems::Baseline)
-                .gap(gap / 2.0)
-                .child(panel().text(&price_text, price_color, theme.font_big));
-            if let Some(arrow_panel) = arrow_panel {
-                row = row.child(arrow_panel);
-            }
-            row
-        })
-        // Change percentage row
-        .child(
-            panel()
-                .width(percent(1.0))
-                .flex_direction(FlexDirection::Row)
-                .gap(gap)
-                .child(panel().text("24h:", theme.foreground_muted, theme.font_medium))
-                .child(panel().text(&change_text, change_color, theme.font_medium)),
-        )
-        // Range bar row
-        .child(build_range_bar(
-            coin.low_24h,
-            coin.high_24h,
-            range_pos,
-            theme,
-        ))
-}
-
-/// Build a range bar showing price position within 24h range
-fn build_range_bar(low: f64, high: f64, position: f64, theme: &GlTheme) -> PanelBuilder {
     let low_text = format!("L:{}", format_price_short(low));
     let high_text = format!("H:{}", format_price_short(high));
-    let gap = theme.panel_gap;
 
-    // Create bar segments: left filled, marker, right empty
-    let left_pct = (position * 100.0) as f32;
-
+    // Single row with 3 columns
     panel()
         .width(percent(1.0))
         .flex_direction(FlexDirection::Row)
         .align_items(AlignItems::Center)
-        .gap(gap / 2.0)
-        // Low label
+        .gap(gap * 2.0)
+        // Column 1: Price + arrow (always show arrow for stable width)
         .child(
             panel()
-                .width(length(60.0))
-                .text(&low_text, theme.foreground_muted, theme.font_small)
-                .text_align(HAlign::Left, VAlign::Center),
+                .flex_direction(FlexDirection::Row)
+                .align_items(AlignItems::Center)
+                .gap(gap / 2.0)
+                .child(panel().text(&price_text, price_color, theme.font_big))
+                .child(panel().text(arrow, arrow_color, theme.font_medium)),
         )
-        // Bar container
+        // Column 2: Change
+        .child(
+            panel()
+                .flex_direction(FlexDirection::Row)
+                .align_items(AlignItems::Center)
+                .gap(gap / 2.0)
+                .child(panel().text("CHANGE:", theme.foreground_muted, theme.font_medium))
+                .child(panel().text(&change_text, change_color, theme.font_medium)),
+        )
+        // Column 3: High/Low bar (grows to fill)
         .child(
             panel()
                 .flex_grow(1.0)
-                .height(length(12.0))
-                .background([0.2, 0.2, 0.2, 1.0])
                 .flex_direction(FlexDirection::Row)
-                // Filled portion
+                .align_items(AlignItems::Center)
+                .gap(gap)
+                .child(panel().text(&low_text, theme.foreground_muted, theme.font_medium))
+                .child(build_range_indicator(range_pos, theme))
+                .child(panel().text(&high_text, theme.foreground_muted, theme.font_medium)),
+        )
+}
+
+/// Build range indicator with dim bar and triangle marker
+fn build_range_indicator(position: f64, theme: &GlTheme) -> PanelBuilder {
+    let left_pct = (position * 100.0) as f32;
+    let bar_height = 4.0;
+
+    panel()
+        .flex_grow(1.0)
+        .flex_direction(FlexDirection::Column)
+        .align_items(AlignItems::Stretch)
+        // Triangle indicator positioned by left margin
+        .child(
+            panel()
+                .width(percent(1.0))
+                .flex_direction(FlexDirection::Row)
+                // Push triangle up by bar height to align with bar
+                .margin(0.0, 0.0, -bar_height, 0.0)
                 .child(
                     panel()
                         .width(percent(left_pct / 100.0))
-                        .height(percent(1.0))
-                        .background(theme.accent),
+                        .height(length(0.0)),
                 )
-                // Marker
-                .child(
-                    panel()
-                        .width(length(4.0))
-                        .height(percent(1.0))
-                        .background(theme.foreground),
-                ),
+                .child(panel().text("▼", theme.foreground, theme.font_small)),
         )
-        // High label
+        // Dim background bar
         .child(
             panel()
-                .width(length(60.0))
-                .text(&high_text, theme.foreground_muted, theme.font_small)
-                .text_align(HAlign::Right, VAlign::Center),
+                .width(percent(1.0))
+                .height(length(bar_height))
+                .background(theme.border),
         )
 }

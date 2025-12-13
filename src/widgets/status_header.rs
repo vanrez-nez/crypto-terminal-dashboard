@@ -56,12 +56,8 @@ pub fn build_status_header(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[Tab:", theme.foreground_inactive, theme.font_normal))
-                .child(panel().text("Overview", overview_color, theme.font_normal))
-                .child(panel().text("]", theme.foreground_inactive, theme.font_normal))
-                .child(panel().text("[", theme.foreground_inactive, theme.font_normal))
-                .child(panel().text("Details", details_color, theme.font_normal))
-                .child(panel().text("]", theme.foreground_inactive, theme.font_normal)),
+                .child(panel().text("[Overview]", overview_color, theme.font_normal))
+                .child(panel().text("[Details]", details_color, theme.font_normal)),
         )
         // Spacer
         .child(panel().flex_grow(1.0))
