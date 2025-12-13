@@ -30,7 +30,7 @@ pub fn build_status_header(
     // Connection status
     let (status_text, status_color) = match connection_status {
         ConnectionStatus::Connected => ("● Live", theme.status_live),
-        ConnectionStatus::Connecting => ("◌ Connecting", theme.status_connecting),
+        ConnectionStatus::Connecting => ("◐ Connecting", theme.status_connecting),
         ConnectionStatus::Disconnected => ("○ Disconnected", theme.status_disconnected),
         ConnectionStatus::Mock => ("◆ Mock", theme.status_mock),
     };
@@ -51,23 +51,17 @@ pub fn build_status_header(
         .flex_direction(FlexDirection::Row)
         .align_items(AlignItems::Center)
         .gap(gap * 2.0)
-        // Title
-        .child(
-            panel()
-                .text("Crypto Dashboard", theme.accent, 1.2)
-                .text_align(HAlign::Left, VAlign::Center),
-        )
         // View tabs
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[Tab:", theme.foreground_inactive, 1.0))
-                .child(panel().text("Overview", overview_color, 1.0))
-                .child(panel().text("]", theme.foreground_inactive, 1.0))
-                .child(panel().text("[", theme.foreground_inactive, 1.0))
-                .child(panel().text("Details", details_color, 1.0))
-                .child(panel().text("]", theme.foreground_inactive, 1.0)),
+                .child(panel().text("[Tab:", theme.foreground_inactive, theme.font_normal))
+                .child(panel().text("Overview", overview_color, theme.font_normal))
+                .child(panel().text("]", theme.foreground_inactive, theme.font_normal))
+                .child(panel().text("[", theme.foreground_inactive, theme.font_normal))
+                .child(panel().text("Details", details_color, theme.font_normal))
+                .child(panel().text("]", theme.foreground_inactive, theme.font_normal)),
         )
         // Spacer
         .child(panel().flex_grow(1.0))
@@ -76,27 +70,27 @@ pub fn build_status_header(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("Provider:", theme.foreground_muted, 1.0))
-                .child(panel().text(&provider_display, theme.foreground, 1.0)),
+                .child(panel().text("Provider:", theme.foreground_muted, theme.font_normal))
+                .child(panel().text(&provider_display, theme.foreground, theme.font_normal)),
         )
         // Time window
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[w]", theme.foreground_muted, 1.0))
-                .child(panel().text("Window:", theme.foreground_muted, 1.0))
-                .child(panel().text(window_display, theme.accent, 1.0)),
+                .child(panel().text("[w]", theme.foreground_muted, theme.font_normal))
+                .child(panel().text("Window:", theme.foreground_muted, theme.font_normal))
+                .child(panel().text(window_display, theme.accent, theme.font_normal)),
         )
         // Chart type (only in Details view)
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[c]", theme.foreground_muted, 1.0))
-                .child(panel().text("Chart:", theme.foreground_muted, 1.0))
-                .child(panel().text(chart_display, theme.accent, 1.0)),
+                .child(panel().text("[c]", theme.foreground_muted, theme.font_normal))
+                .child(panel().text("Chart:", theme.foreground_muted, theme.font_normal))
+                .child(panel().text(chart_display, theme.accent, theme.font_normal)),
         )
         // Connection status
-        .child(panel().text(status_text, status_color, 1.0))
+        .child(panel().text(status_text, status_color, theme.font_normal))
 }

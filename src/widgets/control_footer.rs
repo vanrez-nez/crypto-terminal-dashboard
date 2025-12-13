@@ -28,41 +28,41 @@ pub fn build_overview_footer(
         .child(panel().text(
             &format!("Selected: {}/{}", selected_count, total_count),
             theme.foreground,
-            1.0,
+            theme.font_normal,
         ))
         // Separator
-        .child(panel().text("│", theme.foreground_muted, 1.0))
+        .child(panel().text("│", theme.foreground_muted, theme.font_normal))
         // Space toggle
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[Space]", theme.accent_secondary, 1.0))
-                .child(panel().text("Toggle", theme.foreground, 1.0)),
+                .child(panel().text("[Space]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Toggle", theme.foreground, theme.font_normal)),
         )
         // Enter for details
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[Enter]", theme.accent_secondary, 1.0))
-                .child(panel().text("View Details", theme.foreground, 1.0)),
+                .child(panel().text("[Enter]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("View Details", theme.foreground, theme.font_normal)),
         )
         // Arrow keys
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[↑↓]", theme.accent_secondary, 1.0))
-                .child(panel().text("Navigate", theme.foreground, 1.0)),
+                .child(panel().text("[↑↓]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Navigate", theme.foreground, theme.font_normal)),
         )
         // Quit
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[q]", theme.accent_secondary, 1.0))
-                .child(panel().text("Quit", theme.foreground, 1.0)),
+                .child(panel().text("[q]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Quit", theme.foreground, theme.font_normal)),
         )
 }
 
@@ -85,50 +85,50 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[Tab]", theme.accent_secondary, 1.0))
-                .child(panel().text("Overview", theme.foreground, 1.0)),
+                .child(panel().text("[Tab]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Overview", theme.foreground, theme.font_normal)),
         )
         // Separator
-        .child(panel().text("│", theme.foreground_muted, 1.0))
+        .child(panel().text("│", theme.foreground_muted, theme.font_normal))
         // Chart scroll
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[←→]", theme.accent_secondary, 1.0))
-                .child(panel().text("Scroll Chart", theme.foreground, 1.0)),
+                .child(panel().text("[←→]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Scroll Chart", theme.foreground, theme.font_normal)),
         )
         // Reset scroll
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[Home/r]", theme.accent_secondary, 1.0))
-                .child(panel().text("Reset", theme.foreground, 1.0)),
+                .child(panel().text("[Home/r]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Reset", theme.foreground, theme.font_normal)),
         )
         // Window change
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[w]", theme.accent_secondary, 1.0))
-                .child(panel().text("Window", theme.foreground, 1.0)),
+                .child(panel().text("[w]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Window", theme.foreground, theme.font_normal)),
         )
         // Chart type
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[c]", theme.accent_secondary, 1.0))
-                .child(panel().text("Chart Type", theme.foreground, 1.0)),
+                .child(panel().text("[c]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Chart Type", theme.foreground, theme.font_normal)),
         )
         // Quit
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[q]", theme.accent_secondary, 1.0))
-                .child(panel().text("Quit", theme.foreground, 1.0)),
+                .child(panel().text("[q]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Quit", theme.foreground, theme.font_normal)),
         )
 }
 

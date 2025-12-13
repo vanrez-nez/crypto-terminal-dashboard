@@ -43,6 +43,10 @@ pub struct GlTheme {
     pub panel_padding: f32,
     // Font configuration
     pub font_size: f32,
+    pub font_small: f32,
+    pub font_medium: f32,
+    pub font_normal: f32,
+    pub font_big: f32,
 }
 
 impl Default for GlTheme {
@@ -85,6 +89,10 @@ impl Default for GlTheme {
             panel_padding: 8.0,
             // Font
             font_size: 17.0,
+            font_small: 0.8,
+            font_medium: 0.9,
+            font_normal: 1.0,
+            font_big: 1.2,
         }
     }
 }
@@ -137,6 +145,10 @@ impl GlTheme {
             panel_padding: d.panel_padding,
             // Font uses defaults
             font_size: d.font_size,
+            font_small: d.font_small,
+            font_medium: d.font_medium,
+            font_normal: d.font_normal,
+            font_big: d.font_big,
         }
     }
 }

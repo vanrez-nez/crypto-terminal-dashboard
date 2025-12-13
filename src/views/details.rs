@@ -3,7 +3,7 @@
 use dashboard_system::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
-use crate::app::App;
+use crate::app::{App, TimeWindow};
 use crate::mock::CoinData;
 use crate::widgets::{
     build_details_footer, build_indicator_panel, build_price_panel, build_status_header,
@@ -63,7 +63,7 @@ pub fn build_details_view(
                 coin_index: *idx,
                 bounds: PixelRect::new(0.0, 0.0, 0.0, 0.0), // Filled after layout
             });
-            build_coin_column(coin, count, theme, &spacing)
+            build_coin_column(coin, count, app.time_window, theme, &spacing)
         })
         .collect();
 
@@ -100,6 +100,7 @@ pub fn build_details_view(
 fn build_coin_column(
     coin: &CoinData,
     total_columns: usize,
+    time_window: TimeWindow,
     theme: &GlTheme,
     spacing: &DetailsSpacing,
 ) -> PanelBuilder {
@@ -112,7 +113,7 @@ fn build_coin_column(
         .gap(gap)
         // Price panel with title
         .child(titled_panel(
-            &format!("{}/USD", symbol),
+            &format!("{}/USD ({})", symbol, time_window.as_str()),
             theme,
             build_price_panel(coin, theme),
         ))

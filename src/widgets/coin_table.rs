@@ -52,37 +52,37 @@ fn build_header_row(theme: &GlTheme) -> PanelBuilder {
         .child(
             panel()
                 .width(length(60.0))
-                .text("", theme.accent_secondary, 1.0)
+                .text("", theme.accent_secondary, theme.font_normal)
                 .text_align(HAlign::Left, VAlign::Center),
         )
         .child(
             panel()
                 .width(length(100.0))
-                .text("PAIR", theme.accent_secondary, 1.0)
+                .text("PAIR", theme.accent_secondary, theme.font_normal)
                 .text_align(HAlign::Left, VAlign::Center),
         )
         .child(
             panel()
                 .width(length(140.0))
-                .text("PRICE", theme.accent_secondary, 1.0)
+                .text("PRICE", theme.accent_secondary, theme.font_normal)
                 .text_align(HAlign::Left, VAlign::Center),
         )
         .child(
             panel()
                 .width(length(100.0))
-                .text("24h %", theme.accent_secondary, 1.0)
+                .text("24h %", theme.accent_secondary, theme.font_normal)
                 .text_align(HAlign::Left, VAlign::Center),
         )
         .child(
             panel()
                 .width(length(160.0))
-                .text("24h VOL", theme.accent_secondary, 1.0)
+                .text("24h VOL", theme.accent_secondary, theme.font_normal)
                 .text_align(HAlign::Left, VAlign::Center),
         )
         .child(
             panel()
                 .flex_grow(1.0)
-                .text("24h H/L", theme.accent_secondary, 1.0)
+                .text("24h H/L", theme.accent_secondary, theme.font_normal)
                 .text_align(HAlign::Left, VAlign::Center),
         )
 }
@@ -133,42 +133,42 @@ fn build_coin_row(
         .child(
             panel()
                 .width(length(60.0))
-                .text(&checkbox_text, theme.foreground, 1.0)
+                .text(&checkbox_text, theme.foreground, theme.font_normal)
                 .text_align(HAlign::Left, VAlign::Center),
         )
         // Pair column
         .child(
             panel()
                 .width(length(100.0))
-                .text(&pair, theme.foreground, 1.0)
+                .text(&pair, theme.foreground, theme.font_normal)
                 .text_align(HAlign::Left, VAlign::Center),
         )
         // Price column
         .child(
             panel()
                 .width(length(140.0))
-                .text(&price, theme.foreground, 1.0)
+                .text(&price, theme.foreground, theme.font_normal)
                 .text_align(HAlign::Left, VAlign::Center),
         )
         // Change column
         .child(
             panel()
                 .width(length(100.0))
-                .text(&change, change_color, 1.0)
+                .text(&change, change_color, theme.font_normal)
                 .text_align(HAlign::Left, VAlign::Center),
         )
         // Volume column
         .child(
             panel()
                 .width(length(160.0))
-                .text(&volume, theme.foreground_muted, 1.0)
+                .text(&volume, theme.foreground_muted, theme.font_normal)
                 .text_align(HAlign::Left, VAlign::Center),
         )
         // High/Low column
         .child(
             panel()
                 .flex_grow(1.0)
-                .text(&high_low, theme.foreground_muted, 1.0)
+                .text(&high_low, theme.foreground_muted, theme.font_normal)
                 .text_align(HAlign::Left, VAlign::Center),
         )
 }

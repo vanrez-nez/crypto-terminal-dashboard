@@ -1,4 +1,4 @@
-//! Indicator panel widget displaying RSI, EMA, and MACD values
+//! Indicator panel widget displaying RSI and EMA values in aligned columns
 
 use dashboard_system::{panel, taffy, HAlign, PanelBuilder, VAlign};
 use taffy::prelude::*;
@@ -9,136 +9,85 @@ use crate::mock::IndicatorData;
 /// Build the indicator panel displaying technical indicators
 pub fn build_indicator_panel(indicators: &IndicatorData, theme: &GlTheme) -> PanelBuilder {
     let gap = theme.panel_gap;
+    let freq_colors = [
+        theme.indicator_primary,
+        theme.indicator_secondary,
+        theme.indicator_tertiary,
+    ];
 
     panel()
         .width(percent(1.0))
         .flex_direction(FlexDirection::Column)
         .gap(gap / 2.0)
-        // RSI row
-        .child(
-            panel()
-                .width(percent(1.0))
-                .flex_direction(FlexDirection::Row)
-                .gap(gap * 1.5)
-                .child(
-                    panel()
-                        .width(length(40.0))
-                        .text("RSI", theme.indicator_primary, 0.9)
-                        .text_align(HAlign::Left, VAlign::Center),
-                )
-                .child(build_indicator_value("6", indicators.rsi_6, theme))
-                .child(build_indicator_value("12", indicators.rsi_12, theme))
-                .child(build_indicator_value("24", indicators.rsi_24, theme)),
-        )
-        // EMA row
-        .child(
-            panel()
-                .width(percent(1.0))
-                .flex_direction(FlexDirection::Row)
-                .gap(gap * 1.5)
-                .child(
-                    panel()
-                        .width(length(40.0))
-                        .text("EMA", theme.indicator_secondary, 0.9)
-                        .text_align(HAlign::Left, VAlign::Center),
-                )
-                .child(build_indicator_value("7", indicators.ema_7, theme))
-                .child(build_indicator_value("25", indicators.ema_25, theme))
-                .child(build_indicator_value("99", indicators.ema_99, theme)),
-        )
-        // MACD row (optional, only if available)
-        .child(
-            panel()
-                .width(percent(1.0))
-                .flex_direction(FlexDirection::Row)
-                .gap(gap * 1.5)
-                .child(
-                    panel()
-                        .width(length(40.0))
-                        .text("MACD", theme.indicator_tertiary, 0.9)
-                        .text_align(HAlign::Left, VAlign::Center),
-                )
-                .child(build_macd_value("Line", indicators.macd_line, theme))
-                .child(build_macd_value("Sig", indicators.macd_signal, theme))
-                .child(build_macd_histogram(indicators.macd_histogram, theme)),
+        .child(build_three_column_row(
+            "RSI",
+            [
+                ("6", indicators.rsi_6),
+                ("12", indicators.rsi_12),
+                ("24", indicators.rsi_24),
+            ],
+            freq_colors,
+            theme,
+        ))
+        .child(build_three_column_row(
+            "EMA",
+            [
+                ("7", indicators.ema_7),
+                ("25", indicators.ema_25),
+                ("99", indicators.ema_99),
+            ],
+            freq_colors,
+            theme,
+        ))
+}
+
+fn build_three_column_row(
+    prefix: &str,
+    values: [(&str, f64); 3],
+    freq_colors: [[f32; 4]; 3],
+    theme: &GlTheme,
+) -> PanelBuilder {
+    let gap = theme.panel_gap;
+    panel()
+        .width(percent(1.0))
+        .flex_direction(FlexDirection::Row)
+        .align_items(AlignItems::Center)
+        .gap(gap / 2.0)
+        .children(
+            values
+                .iter()
+                .zip(freq_colors.iter())
+                .map(|((label, value), color)| {
+                    build_indicator_column(prefix, label, *value, *color, theme)
+                })
+                .collect::<Vec<_>>(),
         )
 }
 
-fn build_indicator_value(label: &str, value: f64, theme: &GlTheme) -> PanelBuilder {
+fn build_indicator_column(
+    prefix: &str,
+    label: &str,
+    value: f64,
+    column_color: [f32; 4],
+    theme: &GlTheme,
+) -> PanelBuilder {
     let value_text = format!("{:.1}", value);
-    let value_color = get_rsi_color(value, theme);
-    let gap = theme.panel_gap;
-
     panel()
+        .flex_grow(1.0)
         .flex_direction(FlexDirection::Row)
-        .gap(gap / 2.0)
+        .gap(theme.panel_gap / 4.0)
         .child(
             panel()
-                .text(label, theme.foreground_muted, 0.8)
+                .text(
+                    &format!("{}({}):", prefix, label),
+                    column_color,
+                    theme.font_medium,
+                )
                 .text_align(HAlign::Left, VAlign::Center),
         )
         .child(
             panel()
-                .text(&value_text, value_color, 0.9)
+                .text(&format!(" {}", value_text), column_color, theme.font_medium)
                 .text_align(HAlign::Left, VAlign::Center),
         )
-}
-
-fn build_macd_value(label: &str, value: f64, theme: &GlTheme) -> PanelBuilder {
-    let value_text = format!("{:.2}", value);
-    let value_color = if value >= 0.0 {
-        theme.positive
-    } else {
-        theme.negative
-    };
-    let gap = theme.panel_gap;
-
-    panel()
-        .flex_direction(FlexDirection::Row)
-        .gap(gap / 2.0)
-        .child(
-            panel()
-                .text(label, theme.foreground_muted, 0.8)
-                .text_align(HAlign::Left, VAlign::Center),
-        )
-        .child(
-            panel()
-                .text(&value_text, value_color, 0.9)
-                .text_align(HAlign::Left, VAlign::Center),
-        )
-}
-
-fn build_macd_histogram(value: f64, theme: &GlTheme) -> PanelBuilder {
-    let value_text = format!("{:.2}", value);
-    let value_color = if value >= 0.0 {
-        theme.positive
-    } else {
-        theme.negative
-    };
-    let gap = theme.panel_gap;
-
-    panel()
-        .flex_direction(FlexDirection::Row)
-        .gap(gap / 2.0)
-        .child(
-            panel()
-                .text("Hist", theme.foreground_muted, 0.8)
-                .text_align(HAlign::Left, VAlign::Center),
-        )
-        .child(
-            panel()
-                .text(&value_text, value_color, 0.9)
-                .text_align(HAlign::Left, VAlign::Center),
-        )
-}
-
-/// Get color for RSI value (oversold < 30, overbought > 70)
-fn get_rsi_color(rsi: f64, theme: &GlTheme) -> [f32; 4] {
-    if rsi <= 30.0 {
-        theme.positive // Oversold - potential buy
-    } else if rsi >= 70.0 {
-        theme.negative // Overbought - potential sell
-    } else {
-        theme.foreground // Neutral
-    }
 }

@@ -23,8 +23,8 @@ use mock::{coins_from_pairs, generate_mock_coins};
 use widgets::chart_renderer::ChartRenderer;
 use widgets::theme::GlTheme;
 
-// Font data embedded from dashboard-system
-const FONT_DATA: &[u8] = include_bytes!("../dashboard-system/assets/Roboto-Medium.ttf");
+// Font data embedded from fonts directory
+const FONT_DATA: &[u8] = include_bytes!("../fonts/CascadiaMonoPL.ttf");
 const FONT_SIZE: f32 = 17.0;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

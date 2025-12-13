@@ -17,10 +17,12 @@ pub fn build_price_panel(coin: &CoinData, theme: &GlTheme) -> PanelBuilder {
     let avg_change = coin.avg_change();
     let price_color = price_change_color(coin.price, coin.prev_price, avg_change, theme);
 
-    let (change_color, arrow) = if coin.change_24h >= 0.0 {
+    let (change_color, arrow) = if coin.change_24h > 0.0 {
         (theme.positive, "▲")
-    } else {
+    } else if coin.change_24h < 0.0 {
         (theme.negative, "▼")
+    } else {
+        (theme.foreground_muted, "◆")
     };
 
     // Calculate range bar position (0.0 to 1.0)
@@ -42,9 +44,8 @@ pub fn build_price_panel(coin: &CoinData, theme: &GlTheme) -> PanelBuilder {
                 .flex_direction(FlexDirection::Row)
                 .align_items(AlignItems::Center)
                 .gap(gap)
-                .child(panel().text(&coin.symbol, theme.accent, 1.2))
-                .child(panel().text(&price_text, price_color, 1.1))
-                .child(panel().text(arrow, change_color, 1.0)),
+                .child(panel().text(&price_text, price_color, theme.font_big))
+                .child(panel().text(arrow, change_color, theme.font_normal)),
         )
         // Change percentage row
         .child(
@@ -52,8 +53,8 @@ pub fn build_price_panel(coin: &CoinData, theme: &GlTheme) -> PanelBuilder {
                 .width(percent(1.0))
                 .flex_direction(FlexDirection::Row)
                 .gap(gap)
-                .child(panel().text("24h:", theme.foreground_muted, 0.9))
-                .child(panel().text(&change_text, change_color, 0.9)),
+                .child(panel().text("24h:", theme.foreground_muted, theme.font_medium))
+                .child(panel().text(&change_text, change_color, theme.font_medium)),
         )
         // Range bar row
         .child(build_range_bar(
@@ -82,7 +83,7 @@ fn build_range_bar(low: f64, high: f64, position: f64, theme: &GlTheme) -> Panel
         .child(
             panel()
                 .width(length(60.0))
-                .text(&low_text, theme.foreground_muted, 0.8)
+                .text(&low_text, theme.foreground_muted, theme.font_small)
                 .text_align(HAlign::Left, VAlign::Center),
         )
         // Bar container
@@ -111,7 +112,7 @@ fn build_range_bar(low: f64, high: f64, position: f64, theme: &GlTheme) -> Panel
         .child(
             panel()
                 .width(length(60.0))
-                .text(&high_text, theme.foreground_muted, 0.8)
+                .text(&high_text, theme.foreground_muted, theme.font_small)
                 .text_align(HAlign::Right, VAlign::Center),
         )
 }

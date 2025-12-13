@@ -16,8 +16,8 @@ use super::theme::{Color, GlTheme};
 ///   - Content panel with border, pulled up by half title height so border aligns with title center
 pub fn titled_panel(title: &str, theme: &GlTheme, content: PanelBuilder) -> PanelBuilder {
     // Calculate offset to align border with title center
-    // Title text is 15% smaller than base font
-    let text_scale = 0.85;
+    // Title text uses the theme's small font scale
+    let text_scale = theme.font_small;
     let font_height = theme.font_size * text_scale;
     let title_padding_v = 2.0; // Vertical padding for title background
                                // Border should align with center of title text
@@ -62,7 +62,7 @@ pub fn titled_panel_colored(
     content: PanelBuilder,
 ) -> PanelBuilder {
     // Calculate offset to align border with title center
-    let text_scale = 0.85;
+    let text_scale = theme.font_small;
     let font_height = theme.font_size * text_scale;
     let title_padding_v = 2.0;
     let title_center_offset = title_padding_v + font_height / 2.0;
