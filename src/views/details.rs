@@ -1,0 +1,128 @@
+//! Details view - price charts and indicators for selected coins
+
+use dashboard_system::{panel, PanelBuilder, taffy};
+use taffy::prelude::*;
+
+use crate::app::App;
+use crate::mock::CoinData;
+use crate::widgets::{
+    build_status_header,
+    build_details_footer,
+    build_price_panel,
+    build_indicator_panel,
+    GlTheme,
+    PixelRect,
+};
+
+/// Represents a chart area that needs to be rendered separately
+#[derive(Clone, Debug)]
+pub struct ChartArea {
+    pub coin_index: usize,
+    pub bounds: PixelRect,
+}
+
+pub fn build_details_view(
+    app: &App,
+    theme: &GlTheme,
+    width: f32,
+    height: f32,
+) -> (PanelBuilder, Vec<ChartArea>) {
+    // Use active_coins which falls back to highlighted coin if none selected
+    let active_coins = app.active_coins();
+    let count = active_coins.len();
+
+    let mut chart_areas = Vec::new();
+
+    // Build coin columns
+    let columns: Vec<PanelBuilder> = active_coins
+        .iter()
+        .map(|(idx, coin)| {
+            chart_areas.push(ChartArea {
+                coin_index: *idx,
+                bounds: PixelRect::new(0.0, 0.0, 0.0, 0.0), // Filled after layout
+            });
+            build_coin_column(coin, count, theme)
+        })
+        .collect();
+
+    let view = panel()
+        .width(length(width))
+        .height(length(height))
+        .flex_direction(FlexDirection::Column)
+        .background(theme.background)
+        // Header
+        .child(build_status_header(
+            app.view,
+            &app.provider,
+            app.time_window,
+            app.chart_type,
+            app.connection_status,
+            theme,
+        ))
+        // Coin columns (horizontal layout)
+        .child(
+            panel()
+                .flex_grow(1.0)
+                .flex_direction(FlexDirection::Row)
+                .gap(4.0)
+                .children(columns)
+        )
+        // Footer
+        .child(build_details_footer(theme));
+
+    (view, chart_areas)
+}
+
+fn build_coin_column(
+    coin: &CoinData,
+    total_columns: usize,
+    theme: &GlTheme,
+) -> PanelBuilder {
+    panel()
+        .flex_grow(1.0 / total_columns as f32)
+        .flex_direction(FlexDirection::Column)
+        .gap(4.0)
+        // Price panel (fixed height ~80px)
+        .child(build_price_panel(coin, theme))
+        // Chart area (grows to fill, placeholder for ChartRenderer)
+        .child(build_chart_placeholder(theme))
+        // Indicator panel (fixed height ~80px)
+        .child(build_indicator_panel(&coin.indicators, theme))
+}
+
+fn build_chart_placeholder(theme: &GlTheme) -> PanelBuilder {
+    // This panel reserves space for chart rendering
+    // The actual chart is drawn by ChartRenderer after layout
+    panel()
+        .flex_grow(1.0)
+        .background(theme.background_panel)
+        .border_solid(1.0, theme.border)
+}
+
+/// Calculate chart bounds from known layout constants
+pub fn calculate_chart_bounds(
+    width: f32,
+    height: f32,
+    num_charts: usize,
+    header_height: f32,
+    footer_height: f32,
+    price_panel_height: f32,
+    indicator_height: f32,
+    gap: f32,
+) -> Vec<PixelRect> {
+    if num_charts == 0 {
+        return vec![];
+    }
+
+    let content_height = height - header_height - footer_height;
+    let chart_height = content_height - price_panel_height - indicator_height - gap * 2.0;
+    let chart_width = (width - gap * (num_charts - 1) as f32) / num_charts as f32;
+    let chart_y = header_height + price_panel_height + gap;
+
+    (0..num_charts)
+        .map(|i| {
+            let x = i as f32 * (chart_width + gap);
+            PixelRect::new(x, chart_y, chart_width, chart_height)
+        })
+        .collect()
+}

@@ -4,8 +4,6 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-use crate::theme::Theme;
-
 #[derive(Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
@@ -104,12 +102,5 @@ impl Config {
                 "SOL-USD".to_string(),
             ]
         })
-    }
-
-    pub fn build_theme(&self) -> Theme {
-        match &self.theme {
-            Some(config) => Theme::from_config(config),
-            None => Theme::default(),
-        }
     }
 }

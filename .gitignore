@@ -1,2 +1,5 @@
 /target
 /dashboard-system
+*.swp
+*.swo
+.DS_Store

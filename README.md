@@ -61,3 +61,5 @@ cargo build --release --target aarch64-unknown-linux-gnu
 scp target/aarch64-unknown-linux-gnu/release/crypto-dashboard pi@<raspberry-pi-ip>:~/
 scp config.json pi@<raspberry-pi-ip>:~/
 ```
+
+- After finishing a task you must compile and run the binary in the Raspberry Pi.

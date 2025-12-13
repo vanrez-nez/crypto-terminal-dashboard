@@ -27,7 +27,3 @@ anyhow = "1"
 
 # OpenGL utilities
 bytemuck = { version = "1.14", features = ["derive"] }
-
-# Keep ratatui/crossterm temporarily for gradual migration
-ratatui = "0.28"
-crossterm = "0.28"

@@ -1,6 +1,5 @@
 use crate::api::PriceUpdate;
 use crate::mock::CoinData;
-use crate::theme::Theme;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum View {
@@ -76,7 +75,6 @@ pub struct App {
     pub selected_index: usize,
     pub checked: Vec<bool>,
     pub running: bool,
-    pub theme: Theme,
     pub connection_status: ConnectionStatus,
     pub provider: String,
     pub time_window: TimeWindow,
@@ -86,7 +84,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(coins: Vec<CoinData>, theme: Theme, provider: &str) -> Self {
+    pub fn new(coins: Vec<CoinData>, provider: &str) -> Self {
         let coin_count = coins.len();
         let use_mock = provider == "mock";
         Self {
@@ -95,7 +93,6 @@ impl App {
             selected_index: 0,
             checked: vec![false; coin_count],
             running: true,
-            theme,
             connection_status: if use_mock {
                 ConnectionStatus::Mock
             } else {
@@ -186,6 +183,25 @@ impl App {
             .collect()
     }
 
+    /// Returns indices and references to selected (checked) coins
+    pub fn selected_coins_with_index(&self) -> Vec<(usize, &CoinData)> {
+        self.coins
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| self.checked.get(*i).copied().unwrap_or(false))
+            .collect()
+    }
+
+    /// If no coins selected, return the currently highlighted coin
+    pub fn active_coins(&self) -> Vec<(usize, &CoinData)> {
+        let selected = self.selected_coins_with_index();
+        if selected.is_empty() {
+            vec![(self.selected_index, &self.coins[self.selected_index])]
+        } else {
+            selected
+        }
+    }
+
     /// Handle a price update from the WebSocket
     pub fn handle_update(&mut self, update: PriceUpdate) {
         match update {
@@ -234,6 +250,6 @@ impl App {
 impl Default for App {
     fn default() -> Self {
         use crate::mock::generate_mock_coins;
-        Self::new(generate_mock_coins(), Theme::default(), "mock")
+        Self::new(generate_mock_coins(), "mock")
     }
 }

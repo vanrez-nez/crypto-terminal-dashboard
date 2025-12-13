@@ -3,19 +3,13 @@ mod app;
 mod config;
 mod events;
 mod mock;
-mod theme;
-
-#[allow(dead_code)]
-mod ui;
-
-// OpenGL UI modules
 mod views;
 mod widgets;
 
 use tokio::sync::mpsc;
 
 use dashboard_system::{
-    Display, FontAtlas, FocusManager, LayoutTree, RectRenderer, ScissorStack, TextRenderer,
+    Display, FontAtlas, FocusManager, KeyboardInput, LayoutTree, RectRenderer, ScissorStack, TextRenderer,
     glow, panel, render, taffy,
 };
 use glow::HasContext;
@@ -24,6 +18,7 @@ use api::binance::{fetch_candles, granularity_to_interval, BinanceProvider};
 use api::PriceUpdate;
 use app::App;
 use config::Config;
+use events::handle_gl_events;
 use mock::{coins_from_pairs, generate_mock_coins};
 use widgets::chart_renderer::ChartRenderer;
 use widgets::theme::GlTheme;
@@ -77,9 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         generate_mock_coins()
     };
 
-    // Use ratatui theme for App (will be phased out)
-    let ratatui_theme = config.build_theme();
-    let mut app = App::new(coins, ratatui_theme, provider);
+    let mut app = App::new(coins, provider);
 
     // Spawn WebSocket task if using live data
     if use_live {
@@ -108,10 +101,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
+    // Initialize keyboard input (evdev-based)
+    let mut keyboard = KeyboardInput::new();
+
     // Run the OpenGL render loop
     run_gl_loop(
         &mut display,
         &mut app,
+        &mut keyboard,
         &mut price_rx,
         candle_req_tx,
         &rt,
@@ -131,6 +128,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn run_gl_loop(
     display: &mut Display,
     app: &mut App,
+    keyboard: &mut KeyboardInput,
     price_rx: &mut mpsc::Receiver<PriceUpdate>,
     candle_req_tx: mpsc::Sender<(String, u32)>,
     rt: &tokio::runtime::Runtime,
@@ -163,13 +161,13 @@ fn run_gl_loop(
             app.handle_update(update);
         }
 
-        // 4. Input handling (placeholder for Phase 5)
-        // TODO: keyboard input via evdev
+        // 4. Handle keyboard input (evdev-based)
+        handle_gl_events(keyboard, app);
 
         // 5. Build layout tree
         let mut tree = LayoutTree::new();
-        let root = build_current_view(&mut tree, app, theme, width as f32, height as f32);
-        tree.compute(root, width as f32, height as f32);
+        let view_result = build_current_view(&mut tree, app, theme, width as f32, height as f32);
+        tree.compute(view_result.root, width as f32, height as f32);
 
         // 6. Clear screen
         unsafe {
@@ -186,7 +184,7 @@ fn run_gl_loop(
         render(
             &display.gl,
             &tree,
-            root,
+            view_result.root,
             rect_renderer,
             text_renderer,
             atlas,
@@ -196,10 +194,10 @@ fn run_gl_loop(
             height,
         );
 
-        // 8. Chart rendering (placeholder for Phase 4)
-        // chart_renderer.begin();
-        // ... draw charts ...
-        // chart_renderer.end(&display.gl, width, height);
+        // 8. Chart rendering (Phase 4)
+        // Chart areas are available in view_result.chart_areas for Details view
+        // TODO: Use chart_renderer to draw charts in each chart area
+        let _ = &view_result.chart_areas; // Suppress unused warning for now
 
         // 9. Swap buffers (vsync)
         display.swap_buffers()?;
@@ -208,28 +206,33 @@ fn run_gl_loop(
     Ok(())
 }
 
+/// Result of building a view, includes layout root and optional chart areas
+struct ViewResult {
+    root: taffy::NodeId,
+    chart_areas: Vec<views::ChartArea>,
+}
+
 fn build_current_view(
     tree: &mut LayoutTree,
     app: &App,
     theme: &GlTheme,
     width: f32,
     height: f32,
-) -> taffy::NodeId {
-    use taffy::prelude::*;
+) -> ViewResult {
     use crate::app::View;
-    use crate::views::build_overview_view;
+    use crate::views::{build_overview_view, build_details_view};
 
     match app.view {
-        View::Overview => {
-            build_overview_view(app, theme, width, height).build(tree)
-        }
+        View::Overview => ViewResult {
+            root: build_overview_view(app, theme, width, height).build(tree),
+            chart_areas: vec![],
+        },
         View::Details => {
-            // Placeholder until Phase 3
-            panel()
-                .width(length(width))
-                .height(length(height))
-                .background(theme.background)
-                .build(tree)
+            let (panel, chart_areas) = build_details_view(app, theme, width, height);
+            ViewResult {
+                root: panel.build(tree),
+                chart_areas,
+            }
         }
     }
 }
