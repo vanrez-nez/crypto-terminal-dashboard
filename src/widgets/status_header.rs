@@ -18,6 +18,9 @@ pub fn build_status_header(
     connection_status: ConnectionStatus,
     theme: &GlTheme,
 ) -> PanelBuilder {
+    let gap = theme.panel_gap;
+    let header_height = theme.font_size * 3.0; // Derived from font size
+
     // View tabs
     let (overview_color, details_color) = match view {
         View::Overview => (theme.accent, theme.foreground_inactive),
@@ -41,13 +44,13 @@ pub fn build_status_header(
 
     panel()
         .width(percent(1.0))
-        .height(length(50.0))
+        .height(length(header_height))
         .background(theme.background_panel)
         .border_solid(1.0, theme.border)
-        .padding_all(8.0)
+        .padding_all(theme.panel_padding)
         .flex_direction(FlexDirection::Row)
         .align_items(AlignItems::Center)
-        .gap(16.0)
+        .gap(gap * 2.0)
         // Title
         .child(
             panel()
@@ -58,7 +61,7 @@ pub fn build_status_header(
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(4.0)
+                .gap(gap / 2.0)
                 .child(
                     panel().text("[Tab:", theme.foreground_inactive, 1.0)
                 )
@@ -86,7 +89,7 @@ pub fn build_status_header(
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(4.0)
+                .gap(gap / 2.0)
                 .child(panel().text("Provider:", theme.foreground_muted, 1.0))
                 .child(panel().text(&provider_display, theme.foreground, 1.0))
         )
@@ -94,7 +97,7 @@ pub fn build_status_header(
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(4.0)
+                .gap(gap / 2.0)
                 .child(panel().text("[w]", theme.foreground_muted, 1.0))
                 .child(panel().text("Window:", theme.foreground_muted, 1.0))
                 .child(panel().text(window_display, theme.accent, 1.0))
@@ -103,7 +106,7 @@ pub fn build_status_header(
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(4.0)
+                .gap(gap / 2.0)
                 .child(panel().text("[c]", theme.foreground_muted, 1.0))
                 .child(panel().text("Chart:", theme.foreground_muted, 1.0))
                 .child(panel().text(chart_display, theme.accent, 1.0))

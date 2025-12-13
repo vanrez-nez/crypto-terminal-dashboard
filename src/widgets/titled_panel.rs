@@ -46,7 +46,7 @@ pub fn titled_panel(
         .child(
             panel()
                 .absolute(title_left, 0.0)
-                .background([0.0, 0.0, 0.0, 1.0]) // Black background masks border
+                .background(theme.background) // Theme background masks border
                 .padding(title_padding_v, 6.0, title_padding_v, 6.0)
                 .text(&title.to_uppercase(), theme.accent, text_scale)
                 .text_align(HAlign::Left, VAlign::Center)
@@ -84,7 +84,7 @@ pub fn titled_panel_colored(
         .child(
             panel()
                 .absolute(title_left, 0.0)
-                .background([0.0, 0.0, 0.0, 1.0]) // Black background masks border
+                .background(theme.background) // Theme background masks border
                 .padding(title_padding_v, 6.0, title_padding_v, 6.0)
                 .text(&title.to_uppercase(), title_color, text_scale)
                 .text_align(HAlign::Left, VAlign::Center)

@@ -12,15 +12,18 @@ pub fn build_overview_footer(
     total_count: usize,
     theme: &GlTheme,
 ) -> PanelBuilder {
+    let gap = theme.panel_gap;
+    let footer_height = theme.font_size * 3.0; // Derived from font size
+
     panel()
         .width(percent(1.0))
-        .height(length(50.0))
+        .height(length(footer_height))
         .background(theme.background_panel)
         .border_solid(1.0, theme.border)
-        .padding_all(8.0)
+        .padding_all(theme.panel_padding)
         .flex_direction(FlexDirection::Row)
         .align_items(AlignItems::Center)
-        .gap(16.0)
+        .gap(gap * 2.0)
         // Selection count
         .child(
             panel()
@@ -36,7 +39,7 @@ pub fn build_overview_footer(
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(4.0)
+                .gap(gap / 2.0)
                 .child(panel().text("[Space]", theme.accent_secondary, 1.0))
                 .child(panel().text("Toggle", theme.foreground, 1.0))
         )
@@ -44,7 +47,7 @@ pub fn build_overview_footer(
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(4.0)
+                .gap(gap / 2.0)
                 .child(panel().text("[Enter]", theme.accent_secondary, 1.0))
                 .child(panel().text("View Details", theme.foreground, 1.0))
         )
@@ -52,7 +55,7 @@ pub fn build_overview_footer(
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(4.0)
+                .gap(gap / 2.0)
                 .child(panel().text("[↑↓]", theme.accent_secondary, 1.0))
                 .child(panel().text("Navigate", theme.foreground, 1.0))
         )
@@ -60,7 +63,7 @@ pub fn build_overview_footer(
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(4.0)
+                .gap(gap / 2.0)
                 .child(panel().text("[q]", theme.accent_secondary, 1.0))
                 .child(panel().text("Quit", theme.foreground, 1.0))
         )
@@ -68,20 +71,23 @@ pub fn build_overview_footer(
 
 /// Build the control footer panel for Details view
 pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
+    let gap = theme.panel_gap;
+    let footer_height = theme.font_size * 3.0; // Derived from font size
+
     panel()
         .width(percent(1.0))
-        .height(length(50.0))
+        .height(length(footer_height))
         .background(theme.background_panel)
         .border_solid(1.0, theme.border)
-        .padding_all(8.0)
+        .padding_all(theme.panel_padding)
         .flex_direction(FlexDirection::Row)
         .align_items(AlignItems::Center)
-        .gap(16.0)
+        .gap(gap * 2.0)
         // Tab to switch view
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(4.0)
+                .gap(gap / 2.0)
                 .child(panel().text("[Tab]", theme.accent_secondary, 1.0))
                 .child(panel().text("Overview", theme.foreground, 1.0))
         )
@@ -91,7 +97,7 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(4.0)
+                .gap(gap / 2.0)
                 .child(panel().text("[←→]", theme.accent_secondary, 1.0))
                 .child(panel().text("Scroll Chart", theme.foreground, 1.0))
         )
@@ -99,7 +105,7 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(4.0)
+                .gap(gap / 2.0)
                 .child(panel().text("[Home/r]", theme.accent_secondary, 1.0))
                 .child(panel().text("Reset", theme.foreground, 1.0))
         )
@@ -107,7 +113,7 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(4.0)
+                .gap(gap / 2.0)
                 .child(panel().text("[w]", theme.accent_secondary, 1.0))
                 .child(panel().text("Window", theme.foreground, 1.0))
         )
@@ -115,7 +121,7 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(4.0)
+                .gap(gap / 2.0)
                 .child(panel().text("[c]", theme.accent_secondary, 1.0))
                 .child(panel().text("Chart Type", theme.foreground, 1.0))
         )
@@ -123,7 +129,7 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(4.0)
+                .gap(gap / 2.0)
                 .child(panel().text("[q]", theme.accent_secondary, 1.0))
                 .child(panel().text("Quit", theme.foreground, 1.0))
         )

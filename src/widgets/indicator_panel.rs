@@ -8,20 +8,23 @@ use crate::mock::IndicatorData;
 
 /// Build the indicator panel displaying technical indicators
 pub fn build_indicator_panel(indicators: &IndicatorData, theme: &GlTheme) -> PanelBuilder {
+    let gap = theme.panel_gap;
+
     panel()
         .width(percent(1.0))
         .flex_direction(FlexDirection::Column)
-        .gap(4.0)
+        .gap(gap / 2.0)
         // RSI row
         .child(
             panel()
                 .width(percent(1.0))
                 .flex_direction(FlexDirection::Row)
-                .gap(12.0)
+                .gap(gap * 1.5)
                 .child(
                     panel()
                         .width(length(40.0))
                         .text("RSI", theme.indicator_primary, 0.9)
+                        .text_align(HAlign::Left, VAlign::Center)
                 )
                 .child(build_indicator_value("6", indicators.rsi_6, theme))
                 .child(build_indicator_value("12", indicators.rsi_12, theme))
@@ -32,11 +35,12 @@ pub fn build_indicator_panel(indicators: &IndicatorData, theme: &GlTheme) -> Pan
             panel()
                 .width(percent(1.0))
                 .flex_direction(FlexDirection::Row)
-                .gap(12.0)
+                .gap(gap * 1.5)
                 .child(
                     panel()
                         .width(length(40.0))
                         .text("EMA", theme.indicator_secondary, 0.9)
+                        .text_align(HAlign::Left, VAlign::Center)
                 )
                 .child(build_indicator_value("7", indicators.ema_7, theme))
                 .child(build_indicator_value("25", indicators.ema_25, theme))
@@ -47,11 +51,12 @@ pub fn build_indicator_panel(indicators: &IndicatorData, theme: &GlTheme) -> Pan
             panel()
                 .width(percent(1.0))
                 .flex_direction(FlexDirection::Row)
-                .gap(12.0)
+                .gap(gap * 1.5)
                 .child(
                     panel()
                         .width(length(40.0))
                         .text("MACD", theme.indicator_tertiary, 0.9)
+                        .text_align(HAlign::Left, VAlign::Center)
                 )
                 .child(build_macd_value("Line", indicators.macd_line, theme))
                 .child(build_macd_value("Sig", indicators.macd_signal, theme))
@@ -62,15 +67,20 @@ pub fn build_indicator_panel(indicators: &IndicatorData, theme: &GlTheme) -> Pan
 fn build_indicator_value(label: &str, value: f64, theme: &GlTheme) -> PanelBuilder {
     let value_text = format!("{:.1}", value);
     let value_color = get_rsi_color(value, theme);
+    let gap = theme.panel_gap;
 
     panel()
         .flex_direction(FlexDirection::Row)
-        .gap(4.0)
+        .gap(gap / 2.0)
         .child(
-            panel().text(label, theme.foreground_muted, 0.8)
+            panel()
+                .text(label, theme.foreground_muted, 0.8)
+                .text_align(HAlign::Left, VAlign::Center)
         )
         .child(
-            panel().text(&value_text, value_color, 0.9)
+            panel()
+                .text(&value_text, value_color, 0.9)
+                .text_align(HAlign::Left, VAlign::Center)
         )
 }
 
@@ -81,15 +91,20 @@ fn build_macd_value(label: &str, value: f64, theme: &GlTheme) -> PanelBuilder {
     } else {
         theme.negative
     };
+    let gap = theme.panel_gap;
 
     panel()
         .flex_direction(FlexDirection::Row)
-        .gap(4.0)
+        .gap(gap / 2.0)
         .child(
-            panel().text(label, theme.foreground_muted, 0.8)
+            panel()
+                .text(label, theme.foreground_muted, 0.8)
+                .text_align(HAlign::Left, VAlign::Center)
         )
         .child(
-            panel().text(&value_text, value_color, 0.9)
+            panel()
+                .text(&value_text, value_color, 0.9)
+                .text_align(HAlign::Left, VAlign::Center)
         )
 }
 
@@ -100,15 +115,20 @@ fn build_macd_histogram(value: f64, theme: &GlTheme) -> PanelBuilder {
     } else {
         theme.negative
     };
+    let gap = theme.panel_gap;
 
     panel()
         .flex_direction(FlexDirection::Row)
-        .gap(4.0)
+        .gap(gap / 2.0)
         .child(
-            panel().text("Hist", theme.foreground_muted, 0.8)
+            panel()
+                .text("Hist", theme.foreground_muted, 0.8)
+                .text_align(HAlign::Left, VAlign::Center)
         )
         .child(
-            panel().text(&value_text, value_color, 0.9)
+            panel()
+                .text(&value_text, value_color, 0.9)
+                .text_align(HAlign::Left, VAlign::Center)
         )
 }
 

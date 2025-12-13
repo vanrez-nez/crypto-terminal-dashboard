@@ -39,10 +39,13 @@ pub fn build_coin_table(
 }
 
 fn build_header_row(theme: &GlTheme) -> PanelBuilder {
+    let row_height = theme.font_size * 2.0;
+    let gap = theme.panel_gap;
+
     panel()
         .width(percent(1.0))
-        .height(length(36.0))
-        .padding(4.0, 8.0, 4.0, 8.0)
+        .height(length(row_height))
+        .padding(gap / 2.0, gap, gap / 2.0, gap)
         .flex_direction(FlexDirection::Row)
         .align_items(AlignItems::Center)
         .background(theme.background)
@@ -50,31 +53,37 @@ fn build_header_row(theme: &GlTheme) -> PanelBuilder {
             panel()
                 .width(length(60.0))
                 .text("", theme.accent_secondary, 1.0)
+                .text_align(HAlign::Left, VAlign::Center)
         )
         .child(
             panel()
                 .width(length(100.0))
                 .text("PAIR", theme.accent_secondary, 1.0)
+                .text_align(HAlign::Left, VAlign::Center)
         )
         .child(
             panel()
                 .width(length(140.0))
                 .text("PRICE", theme.accent_secondary, 1.0)
+                .text_align(HAlign::Left, VAlign::Center)
         )
         .child(
             panel()
                 .width(length(100.0))
                 .text("24h %", theme.accent_secondary, 1.0)
+                .text_align(HAlign::Left, VAlign::Center)
         )
         .child(
             panel()
                 .width(length(160.0))
                 .text("24h VOL", theme.accent_secondary, 1.0)
+                .text_align(HAlign::Left, VAlign::Center)
         )
         .child(
             panel()
                 .flex_grow(1.0)
                 .text("24h H/L", theme.accent_secondary, 1.0)
+                .text_align(HAlign::Left, VAlign::Center)
         )
 }
 
@@ -110,10 +119,13 @@ fn build_coin_row(
         [0.0, 0.0, 0.0, 0.0] // Transparent
     };
 
+    let row_height = theme.font_size * 2.0;
+    let gap = theme.panel_gap;
+
     panel()
         .width(percent(1.0))
-        .height(length(36.0))
-        .padding(4.0, 8.0, 4.0, 8.0)
+        .height(length(row_height))
+        .padding(gap / 2.0, gap, gap / 2.0, gap)
         .flex_direction(FlexDirection::Row)
         .align_items(AlignItems::Center)
         .background(bg_color)
@@ -122,35 +134,41 @@ fn build_coin_row(
             panel()
                 .width(length(60.0))
                 .text(&checkbox_text, theme.foreground, 1.0)
+                .text_align(HAlign::Left, VAlign::Center)
         )
         // Pair column
         .child(
             panel()
                 .width(length(100.0))
                 .text(&pair, theme.foreground, 1.0)
+                .text_align(HAlign::Left, VAlign::Center)
         )
         // Price column
         .child(
             panel()
                 .width(length(140.0))
                 .text(&price, theme.foreground, 1.0)
+                .text_align(HAlign::Left, VAlign::Center)
         )
         // Change column
         .child(
             panel()
                 .width(length(100.0))
                 .text(&change, change_color, 1.0)
+                .text_align(HAlign::Left, VAlign::Center)
         )
         // Volume column
         .child(
             panel()
                 .width(length(160.0))
                 .text(&volume, theme.foreground_muted, 1.0)
+                .text_align(HAlign::Left, VAlign::Center)
         )
         // High/Low column
         .child(
             panel()
                 .flex_grow(1.0)
                 .text(&high_low, theme.foreground_muted, 1.0)
+                .text_align(HAlign::Left, VAlign::Center)
         )
 }
