@@ -1,8 +1,9 @@
 //! OpenGL renderer for chart primitives (lines, candles, bars)
 //!
 //! This renderer is optimized for drawing financial charts with batched rendering.
+#![allow(dead_code)]
 
-use dashboard_system::glow::{self, HasContext};
+use crate::base::glow::{self, HasContext};
 
 const VERTEX_SHADER: &str = r#"
     attribute vec2 a_pos;

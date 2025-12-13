@@ -259,32 +259,6 @@ impl CoinData {
         let rs = avg_gain / avg_loss;
         100.0 - (100.0 / (1.0 + rs))
     }
-
-    /// Get price data points for chart: Vec<(x, y)> where x is index, y is close price
-    pub fn chart_data(&self) -> Vec<(f64, f64)> {
-        self.candles
-            .iter()
-            .enumerate()
-            .map(|(i, c)| (i as f64, c.close))
-            .collect()
-    }
-
-    /// Get min/max price for Y-axis bounds with padding
-    pub fn price_bounds(&self) -> (f64, f64) {
-        if self.candles.is_empty() {
-            return (0.0, 100.0);
-        }
-        let closes: Vec<f64> = self.candles.iter().map(|c| c.close).collect();
-        let min = closes.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max = closes.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        // Add 0.5% padding
-        (min * 0.995, max * 1.005)
-    }
-
-    /// Get the timestamp of the last candle (for countdown timer)
-    pub fn last_candle_time(&self) -> Option<i64> {
-        self.candles.last().map(|c| c.time)
-    }
 }
 
 pub fn generate_mock_coins() -> Vec<CoinData> {

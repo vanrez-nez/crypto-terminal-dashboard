@@ -1,5 +1,6 @@
 mod api;
 mod app;
+mod base;
 mod config;
 mod events;
 mod mock;
@@ -8,9 +9,9 @@ mod widgets;
 
 use tokio::sync::mpsc;
 
-use dashboard_system::{
-    glow, panel, render, taffy, Display, FocusManager, FontAtlas, KeyboardInput, LayoutTree,
-    RectRenderer, ScissorStack, TextRenderer,
+use crate::base::{
+    glow, render, taffy, Display, FocusManager, FontAtlas, KeyboardInput, LayoutTree, RectRenderer,
+    ScissorStack, TextRenderer,
 };
 use glow::HasContext;
 
@@ -45,7 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize DRM/GBM/EGL display
     let mut display = Display::new().expect("Failed to initialize DRM display");
-    let (width, height) = (display.width, display.height);
+    let height = display.height;
 
     // Font atlas
     let atlas = FontAtlas::new(&display.gl, FONT_DATA, FONT_SIZE)?;

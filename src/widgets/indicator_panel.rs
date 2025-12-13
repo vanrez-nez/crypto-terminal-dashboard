@@ -1,6 +1,7 @@
 //! Indicator panel widget displaying RSI and EMA values in aligned columns
 
-use dashboard_system::{panel, taffy, HAlign, PanelBuilder, VAlign};
+use crate::base::layout::{HAlign, VAlign};
+use crate::base::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
 use super::theme::GlTheme;

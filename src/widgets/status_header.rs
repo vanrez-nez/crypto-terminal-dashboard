@@ -2,7 +2,7 @@
 //!
 //! Shows: [Overview] [Details] | Provider: Binance | [w] Window: 15m | [c] Chart: Candle | ● Live
 
-use dashboard_system::{panel, taffy, HAlign, PanelBuilder, VAlign};
+use crate::base::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
 use super::format::capitalize;

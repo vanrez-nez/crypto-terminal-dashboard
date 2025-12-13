@@ -1,11 +1,9 @@
 //! Control footer widget displaying keyboard shortcuts and selection info
 
-use dashboard_system::{panel, taffy, HAlign, PanelBuilder, VAlign};
+use crate::base::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
 use super::theme::GlTheme;
-use crate::app::View;
-
 /// Build the control footer panel for Overview view
 pub fn build_overview_footer(
     selected_count: usize,
@@ -24,13 +22,11 @@ pub fn build_overview_footer(
         .flex_direction(FlexDirection::Row)
         .align_items(AlignItems::Center)
         .gap(gap * 2.0)
-        // Selection count
         .child(panel().text(
             &format!("Selected: {}/{}", selected_count, total_count),
             theme.foreground,
             theme.font_normal,
         ))
-        // Separator
         .child(panel().text("│", theme.foreground_muted, theme.font_normal))
         // Space toggle
         .child(
@@ -53,7 +49,7 @@ pub fn build_overview_footer(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[↑↓]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("[▲▼]", theme.accent_secondary, theme.font_normal))
                 .child(panel().text("Navigate", theme.foreground, theme.font_normal)),
         )
         // Quit
@@ -80,22 +76,12 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
         .flex_direction(FlexDirection::Row)
         .align_items(AlignItems::Center)
         .gap(gap * 2.0)
-        // Tab to switch view
-        .child(
-            panel()
-                .flex_direction(FlexDirection::Row)
-                .gap(gap / 2.0)
-                .child(panel().text("[Tab]", theme.accent_secondary, theme.font_normal))
-                .child(panel().text("Overview", theme.foreground, theme.font_normal)),
-        )
-        // Separator
-        .child(panel().text("│", theme.foreground_muted, theme.font_normal))
         // Chart scroll
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
-                .child(panel().text("[←→]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("[◄►]", theme.accent_secondary, theme.font_normal))
                 .child(panel().text("Scroll Chart", theme.foreground, theme.font_normal)),
         )
         // Reset scroll
@@ -130,17 +116,4 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
                 .child(panel().text("[q]", theme.accent_secondary, theme.font_normal))
                 .child(panel().text("Quit", theme.foreground, theme.font_normal)),
         )
-}
-
-/// Build footer based on current view
-pub fn build_control_footer(
-    view: View,
-    selected_count: usize,
-    total_count: usize,
-    theme: &GlTheme,
-) -> PanelBuilder {
-    match view {
-        View::Overview => build_overview_footer(selected_count, total_count, theme),
-        View::Details => build_details_footer(theme),
-    }
 }

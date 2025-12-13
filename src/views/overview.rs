@@ -1,11 +1,12 @@
 //! Overview view - coin table with selection
 
-use dashboard_system::{panel, taffy, PanelBuilder};
+use crate::base::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
 use crate::app::App;
 use crate::widgets::{
-    build_coin_table, build_overview_footer, build_status_header, titled_panel, GlTheme,
+    coin_table::build_coin_table, control_footer::build_overview_footer,
+    status_header::build_status_header, theme::GlTheme, titled_panel::titled_panel,
 };
 
 /// Centralizes spacing for the overview layout so tweaks happen in one place.
@@ -32,7 +33,7 @@ impl OverviewSpacing {
 }
 
 pub fn build_overview_view(app: &App, theme: &GlTheme, width: f32, height: f32) -> PanelBuilder {
-    let selected_count = app.checked.iter().filter(|&&c| c).count();
+    let selected_count = app.selected_count();
     let total_count = app.coins.len();
     let spacing = OverviewSpacing::new(theme);
 

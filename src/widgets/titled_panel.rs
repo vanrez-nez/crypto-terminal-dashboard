@@ -1,9 +1,10 @@
 //! Titled panel widget - creates panels with a title on the border (like HTML fieldset legend)
 
-use dashboard_system::{panel, taffy, HAlign, PanelBuilder, VAlign};
+use crate::base::layout::{HAlign, VAlign};
+use crate::base::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
-use super::theme::{Color, GlTheme};
+use super::theme::GlTheme;
 
 /// Build a titled panel with the title sitting on the top border
 ///
@@ -50,49 +51,6 @@ pub fn titled_panel(title: &str, theme: &GlTheme, content: PanelBuilder) -> Pane
                 .background(theme.background) // Theme background masks border
                 .padding(title_padding_v, 6.0, title_padding_v, 6.0)
                 .text(&title.to_uppercase(), theme.accent, text_scale)
-                .text_align(HAlign::Left, VAlign::Center),
-        )
-}
-
-/// Build a titled panel with custom title color
-pub fn titled_panel_colored(
-    title: &str,
-    title_color: Color,
-    theme: &GlTheme,
-    content: PanelBuilder,
-) -> PanelBuilder {
-    // Calculate offset to align border with title center
-    let text_scale = theme.font_small;
-    let font_height = theme.font_size * text_scale;
-    let title_padding_v = 2.0;
-    let title_center_offset = title_padding_v + font_height / 2.0;
-    let title_left = theme.panel_padding + 4.0;
-
-    panel()
-        .flex_direction(FlexDirection::Column)
-        // Content panel with border first
-        .child(
-            panel()
-                .flex_grow(1.0)
-                .background(theme.background_panel)
-                .border_solid(1.0, theme.border)
-                .padding(
-                    theme.panel_padding + title_center_offset,
-                    theme.panel_padding,
-                    theme.panel_padding,
-                    theme.panel_padding,
-                )
-                .margin(title_center_offset, 0.0, 0.0, 0.0)
-                .flex_direction(FlexDirection::Column)
-                .child(content),
-        )
-        // Title - absolute positioned, renders ON TOP of border
-        .child(
-            panel()
-                .absolute(title_left, 0.0)
-                .background(theme.background) // Theme background masks border
-                .padding(title_padding_v, 6.0, title_padding_v, 6.0)
-                .text(&title.to_uppercase(), title_color, text_scale)
                 .text_align(HAlign::Left, VAlign::Center),
         )
 }

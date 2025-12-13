@@ -138,29 +138,21 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytemuck",
- "dashboard-system",
- "futures-util",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "tokio-tungstenite",
-]
-
-[[package]]
-name = "dashboard-system"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
  "drm",
  "drm-sys",
  "fontdue",
+ "futures-util",
  "gbm",
  "glow",
  "khronos-egl",
  "libc",
  "rand 0.8.5",
+ "reqwest",
+ "serde",
+ "serde_json",
  "taffy",
+ "tokio",
+ "tokio-tungstenite",
 ]
 
 [[package]]

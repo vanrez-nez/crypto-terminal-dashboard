@@ -57,16 +57,6 @@ impl TimeWindow {
             TimeWindow::Day1 => 86400,  // 1 day
         }
     }
-
-    /// Returns the window duration in seconds (for filtering high/low range)
-    pub fn duration_secs(&self) -> i64 {
-        match self {
-            TimeWindow::Min15 => 900,   // 15 minutes
-            TimeWindow::Hour1 => 3600,  // 1 hour
-            TimeWindow::Hour4 => 14400, // 4 hours
-            TimeWindow::Day1 => 86400,  // 24 hours
-        }
-    }
 }
 
 pub struct App {
@@ -172,15 +162,6 @@ impl App {
 
     pub fn selected_count(&self) -> usize {
         self.checked.iter().filter(|&&c| c).count()
-    }
-
-    pub fn selected_coins(&self) -> Vec<&CoinData> {
-        self.coins
-            .iter()
-            .zip(self.checked.iter())
-            .filter(|(_, &checked)| checked)
-            .map(|(coin, _)| coin)
-            .collect()
     }
 
     /// Returns indices and references to selected (checked) coins

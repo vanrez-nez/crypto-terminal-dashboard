@@ -1,6 +1,7 @@
 //! Price panel widget displaying current price, 24h change, and range bar
 
-use dashboard_system::{panel, taffy, HAlign, PanelBuilder, VAlign};
+use crate::base::layout::{HAlign, VAlign};
+use crate::base::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
 use super::format::{format_change, format_price, format_price_short, price_change_color};
@@ -17,12 +18,24 @@ pub fn build_price_panel(coin: &CoinData, theme: &GlTheme) -> PanelBuilder {
     let avg_change = coin.avg_change();
     let price_color = price_change_color(coin.price, coin.prev_price, avg_change, theme);
 
-    let (change_color, arrow) = if coin.change_24h > 0.0 {
-        (theme.positive, "▲")
-    } else if coin.change_24h < 0.0 {
-        (theme.negative, "▼")
+    let price_delta = coin.price - coin.prev_price;
+    let arrow_panel = if price_delta.abs() > f64::EPSILON {
+        let arrow = if price_delta > 0.0 { "▲" } else { "▼" };
+        Some(
+            panel()
+                .text(arrow, price_color, theme.font_big)
+                .text_align(HAlign::Left, VAlign::Center),
+        )
     } else {
-        (theme.foreground_muted, "◆")
+        None
+    };
+
+    let change_color = if coin.change_24h > 0.0 {
+        theme.positive
+    } else if coin.change_24h < 0.0 {
+        theme.negative
+    } else {
+        theme.foreground_muted
     };
 
     // Calculate range bar position (0.0 to 1.0)
@@ -37,16 +50,18 @@ pub fn build_price_panel(coin: &CoinData, theme: &GlTheme) -> PanelBuilder {
         .width(percent(1.0))
         .flex_direction(FlexDirection::Column)
         .gap(gap / 2.0)
-        // Symbol and price row
-        .child(
-            panel()
+        .child({
+            let mut row = panel()
                 .width(percent(1.0))
                 .flex_direction(FlexDirection::Row)
-                .align_items(AlignItems::Center)
-                .gap(gap)
-                .child(panel().text(&price_text, price_color, theme.font_big))
-                .child(panel().text(arrow, change_color, theme.font_normal)),
-        )
+                .align_items(AlignItems::Baseline)
+                .gap(gap / 2.0)
+                .child(panel().text(&price_text, price_color, theme.font_big));
+            if let Some(arrow_panel) = arrow_panel {
+                row = row.child(arrow_panel);
+            }
+            row
+        })
         // Change percentage row
         .child(
             panel()

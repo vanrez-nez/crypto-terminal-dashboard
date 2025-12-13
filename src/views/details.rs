@@ -1,17 +1,19 @@
 //! Details view - price charts and indicators for selected coins
 
-use dashboard_system::{panel, taffy, PanelBuilder};
+use crate::base::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
 use crate::app::{App, TimeWindow};
 use crate::mock::CoinData;
 use crate::widgets::{
-    build_details_footer, build_indicator_panel, build_price_panel, build_status_header,
-    titled_panel, GlTheme, PixelRect,
+    chart_renderer::PixelRect, control_footer::build_details_footer,
+    indicator_panel::build_indicator_panel, price_panel::build_price_panel,
+    status_header::build_status_header, theme::GlTheme, titled_panel::titled_panel,
 };
 
 /// Represents a chart area that needs to be rendered separately
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct ChartArea {
     pub coin_index: usize,
     pub bounds: PixelRect,
@@ -118,7 +120,7 @@ fn build_coin_column(
             build_price_panel(coin, theme),
         ))
         // Chart area (grows to fill, placeholder for ChartRenderer)
-        .child(titled_panel("Chart", theme, build_chart_placeholder(theme)).flex_grow(1.0))
+        .child(titled_panel("Chart", theme, build_chart_placeholder()).flex_grow(1.0))
         // Indicator panel with title
         .child(titled_panel(
             "Indicators",
@@ -127,36 +129,8 @@ fn build_coin_column(
         ))
 }
 
-fn build_chart_placeholder(theme: &GlTheme) -> PanelBuilder {
+fn build_chart_placeholder() -> PanelBuilder {
     // This panel reserves space for chart rendering
     // The actual chart is drawn by ChartRenderer after layout
     panel().flex_grow(1.0)
-}
-
-/// Calculate chart bounds from known layout constants
-pub fn calculate_chart_bounds(
-    width: f32,
-    height: f32,
-    num_charts: usize,
-    header_height: f32,
-    footer_height: f32,
-    price_panel_height: f32,
-    indicator_height: f32,
-    gap: f32,
-) -> Vec<PixelRect> {
-    if num_charts == 0 {
-        return vec![];
-    }
-
-    let content_height = height - header_height - footer_height;
-    let chart_height = content_height - price_panel_height - indicator_height - gap * 2.0;
-    let chart_width = (width - gap * (num_charts - 1) as f32) / num_charts as f32;
-    let chart_y = header_height + price_panel_height + gap;
-
-    (0..num_charts)
-        .map(|i| {
-            let x = i as f32 * (chart_width + gap);
-            PixelRect::new(x, chart_y, chart_width, chart_height)
-        })
-        .collect()
 }

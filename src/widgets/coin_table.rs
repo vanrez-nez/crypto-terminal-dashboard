@@ -1,6 +1,7 @@
 //! Coin table widget for displaying a list of cryptocurrencies with selection
 
-use dashboard_system::{panel, taffy, HAlign, PanelBuilder, VAlign};
+use crate::base::layout::{HAlign, VAlign};
+use crate::base::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
 use super::format::{format_change, format_price, format_price_short, format_volume_short};
@@ -94,8 +95,7 @@ fn build_coin_row(
     theme: &GlTheme,
 ) -> PanelBuilder {
     let checkbox = if is_checked { "[x]" } else { "[ ]" };
-    let cursor = if is_selected { ">" } else { " " };
-    let checkbox_text = format!("{}{}", cursor, checkbox);
+    let checkbox_text = checkbox.to_string();
 
     let pair = format!("{}/USD", coin.symbol);
     let price = format_price(coin.price);
