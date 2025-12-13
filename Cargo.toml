@@ -1,15 +1,33 @@
+[workspace]
+members = ["dashboard-system"]
+
 [package]
 name = "crypto-dashboard"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ratatui = "0.28"
-crossterm = "0.28"
+# UI Framework
+dashboard-system = { path = "dashboard-system" }
+
+# Data serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# Async runtime
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+
+# WebSocket and HTTP
 tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
 futures-util = "0.3"
-anyhow = "1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# Error handling
+anyhow = "1"
+
+# OpenGL utilities
+bytemuck = { version = "1.14", features = ["derive"] }
+
+# Keep ratatui/crossterm temporarily for gradual migration
+ratatui = "0.28"
+crossterm = "0.28"

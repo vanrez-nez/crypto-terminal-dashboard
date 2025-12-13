@@ -133,8 +133,8 @@ fn render_price_and_range(frame: &mut Frame, area: Rect, coin: &CoinData, time_w
 
     // Split into three columns: price | change | range bar
     let cols = Layout::horizontal([
-        Constraint::Length(22), // Price column
-        Constraint::Length(18), // Change column
+        Constraint::Length(18), // Price column
+        Constraint::Length(14), // Change column
         Constraint::Min(20),    // Range bar column
     ])
     .split(inner);
@@ -145,7 +145,7 @@ fn render_price_and_range(frame: &mut Frame, area: Rect, coin: &CoinData, time_w
     let arrow = if tick_change > 0.0 { " ▲" } else if tick_change < 0.0 { " ▼" } else { "  " };
 
     let price_line = Line::from(vec![
-        Span::styled(" Price: ", Style::default().fg(theme.foreground_muted)),
+        Span::styled(" P: ", Style::default().fg(theme.foreground_muted)),
         Span::styled(widgets::format_price(coin.price), Style::default().fg(price_color).add_modifier(Modifier::BOLD)),
         Span::styled(arrow, Style::default().fg(price_color).add_modifier(Modifier::BOLD)),
     ]);
@@ -176,7 +176,7 @@ fn render_price_and_range(frame: &mut Frame, area: Rect, coin: &CoinData, time_w
 
     let (change_str, change_color, change_arrow) = widgets::format_change(window_change, theme);
     let change_line = Line::from(vec![
-        Span::styled("Change: ", Style::default().fg(theme.foreground_muted)),
+        Span::styled("C: ", Style::default().fg(theme.foreground_muted)),
         Span::styled(change_str, Style::default().fg(change_color)),
         Span::raw(" "),
         Span::styled(change_arrow, Style::default().fg(change_color)),

@@ -4,42 +4,66 @@ mod config;
 mod events;
 mod mock;
 mod theme;
+
+#[allow(dead_code)]
 mod ui;
 
-use std::io;
+// OpenGL UI modules
+mod views;
+mod widgets;
 
-use crossterm::{
-    cursor::MoveTo,
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, Clear, ClearType},
-};
-use ratatui::{backend::CrosstermBackend, Terminal};
 use tokio::sync::mpsc;
+
+use dashboard_system::{
+    Display, FontAtlas, FocusManager, LayoutTree, RectRenderer, ScissorStack, TextRenderer,
+    glow, panel, render, taffy,
+};
+use glow::HasContext;
 
 use api::binance::{fetch_candles, granularity_to_interval, BinanceProvider};
 use api::PriceUpdate;
 use app::App;
 use config::Config;
 use mock::{coins_from_pairs, generate_mock_coins};
+use widgets::chart_renderer::ChartRenderer;
+use widgets::theme::GlTheme;
 
-#[tokio::main]
-async fn main() -> io::Result<()> {
+// Font data embedded from dashboard-system
+const FONT_DATA: &[u8] = include_bytes!("../dashboard-system/assets/Roboto-Medium.ttf");
+const FONT_SIZE: f32 = 24.0;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create tokio runtime manually (not async main)
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+
     // Load config
     let config = Config::load("config.json");
-    let theme = config.build_theme();
     let pairs = config.pairs();
 
-    // Setup terminal
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, Clear(ClearType::All), MoveTo(0, 0))?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    // Create GlTheme from config
+    let gl_theme = match &config.theme {
+        Some(theme_config) => GlTheme::from_config(theme_config),
+        None => GlTheme::default(),
+    };
 
-    // Create channel for price updates
-    let (tx, mut rx) = mpsc::channel::<PriceUpdate>(100);
+    // Initialize DRM/GBM/EGL display
+    let mut display = Display::new().expect("Failed to initialize DRM display");
+    let (width, height) = (display.width, display.height);
 
-    // Create channel for candle fetch requests (product_id, granularity)
+    // Font atlas
+    let atlas = FontAtlas::new(&display.gl, FONT_DATA, FONT_SIZE)?;
+
+    // Renderers
+    let mut text_renderer = TextRenderer::new(&display.gl)?;
+    let mut rect_renderer = RectRenderer::new(&display.gl)?;
+    let mut chart_renderer = ChartRenderer::new(&display.gl)?;
+    let mut scissor_stack = ScissorStack::new(height);
+    let focus_manager = FocusManager::new();
+
+    // Create channels for price updates and candle requests
+    let (price_tx, mut price_rx) = mpsc::channel::<PriceUpdate>(100);
     let (candle_req_tx, mut candle_req_rx) = mpsc::channel::<(String, u32)>(32);
 
     // Determine provider
@@ -52,19 +76,22 @@ async fn main() -> io::Result<()> {
     } else {
         generate_mock_coins()
     };
-    let mut app = App::new(coins, theme, provider);
+
+    // Use ratatui theme for App (will be phased out)
+    let ratatui_theme = config.build_theme();
+    let mut app = App::new(coins, ratatui_theme, provider);
 
     // Spawn WebSocket task if using live data
     if use_live {
         let ws_provider = BinanceProvider::new(pairs.clone());
-        let ws_tx = tx.clone();
-        tokio::spawn(async move {
+        let ws_tx = price_tx.clone();
+        rt.spawn(async move {
             ws_provider.run(ws_tx).await;
         });
 
         // Spawn candle fetcher task
-        let candle_tx = tx.clone();
-        tokio::spawn(async move {
+        let candle_tx = price_tx.clone();
+        rt.spawn(async move {
             while let Some((symbol, granularity)) = candle_req_rx.recv().await {
                 let interval = granularity_to_interval(granularity);
                 match fetch_candles(&symbol, interval).await {
@@ -81,44 +108,119 @@ async fn main() -> io::Result<()> {
         });
     }
 
-    // Main loop
-    let result = run_app(&mut terminal, &mut app, &mut rx, candle_req_tx, &pairs).await;
+    // Run the OpenGL render loop
+    run_gl_loop(
+        &mut display,
+        &mut app,
+        &mut price_rx,
+        candle_req_tx,
+        &rt,
+        &pairs,
+        &atlas,
+        &mut text_renderer,
+        &mut rect_renderer,
+        &mut chart_renderer,
+        &mut scissor_stack,
+        &focus_manager,
+        &gl_theme,
+    )?;
 
-    // Restore terminal
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
-
-    result
+    Ok(())
 }
 
-async fn run_app(
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+fn run_gl_loop(
+    display: &mut Display,
     app: &mut App,
-    rx: &mut mpsc::Receiver<PriceUpdate>,
+    price_rx: &mut mpsc::Receiver<PriceUpdate>,
     candle_req_tx: mpsc::Sender<(String, u32)>,
+    rt: &tokio::runtime::Runtime,
     pairs: &[String],
-) -> io::Result<()> {
+    atlas: &FontAtlas,
+    text_renderer: &mut TextRenderer,
+    rect_renderer: &mut RectRenderer,
+    _chart_renderer: &mut ChartRenderer, // Placeholder for Phase 4
+    scissor_stack: &mut ScissorStack,
+    focus_manager: &FocusManager,
+    theme: &GlTheme,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let (width, height) = (display.width, display.height);
+
     while app.running {
-        // Check if we need to fetch candles (startup or window change)
+        // 1. Poll tokio tasks (non-blocking)
+        rt.block_on(async { tokio::task::yield_now().await });
+
+        // 2. Handle candle refresh requests
         if app.needs_candle_refresh {
             app.needs_candle_refresh = false;
             let granularity = app.time_window.granularity();
             for pair in pairs {
-                let _ = candle_req_tx.send((pair.clone(), granularity)).await;
+                let _ = rt.block_on(candle_req_tx.send((pair.clone(), granularity)));
             }
         }
 
-        // Process all pending price updates (non-blocking)
-        while let Ok(update) = rx.try_recv() {
+        // 3. Process price updates (non-blocking)
+        while let Ok(update) = price_rx.try_recv() {
             app.handle_update(update);
         }
 
-        // Draw UI
-        terminal.draw(|frame| ui::render(frame, app))?;
+        // 4. Input handling (placeholder for Phase 5)
+        // TODO: keyboard input via evdev
 
-        // Handle keyboard events
-        events::handle_events(app)?;
+        // 5. Build layout tree
+        let mut tree = LayoutTree::new();
+        let root = build_current_view(&mut tree, app, theme, width as f32, height as f32);
+        tree.compute(root, width as f32, height as f32);
+
+        // 6. Clear screen
+        unsafe {
+            display.gl.clear_color(
+                theme.background[0],
+                theme.background[1],
+                theme.background[2],
+                theme.background[3],
+            );
+            display.gl.clear(glow::COLOR_BUFFER_BIT);
+        }
+
+        // 7. Render layout tree
+        render(
+            &display.gl,
+            &tree,
+            root,
+            rect_renderer,
+            text_renderer,
+            atlas,
+            scissor_stack,
+            focus_manager,
+            width,
+            height,
+        );
+
+        // 8. Chart rendering (placeholder for Phase 4)
+        // chart_renderer.begin();
+        // ... draw charts ...
+        // chart_renderer.end(&display.gl, width, height);
+
+        // 9. Swap buffers (vsync)
+        display.swap_buffers()?;
     }
+
     Ok(())
+}
+
+fn build_current_view(
+    tree: &mut LayoutTree,
+    _app: &App,
+    theme: &GlTheme,
+    width: f32,
+    height: f32,
+) -> taffy::NodeId {
+    use taffy::prelude::*;
+
+    // Temporary: solid background panel (will be replaced in Phase 2/3)
+    panel()
+        .width(length(width))
+        .height(length(height))
+        .background(theme.background)
+        .build(tree)
 }

@@ -1,0 +1,3 @@
+- This project is meant to run inside a raspberry zero 2 w with no desktop environment using DRM/GBM/EGL initialization
+- You need to cross-compile the project locally and then test it in the monode.local via ssh using the mcp connector
+- Rust is already installed in the raspberry pi zero 2 w image
