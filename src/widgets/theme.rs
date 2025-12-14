@@ -26,6 +26,10 @@ pub struct GlTheme {
     pub indicator_primary: Color,
     pub indicator_secondary: Color,
     pub indicator_tertiary: Color,
+    // Polygonal chart colors
+    pub poly_fill_top: Color,
+    pub poly_fill_bottom: Color,
+    pub poly_line: Color,
     // Price change intensity colors (high/mid/low)
     pub price_up_high: Color,
     pub price_up_mid: Color,
@@ -71,6 +75,10 @@ impl Default for GlTheme {
             indicator_primary: [1.0, 0.647, 0.0, 1.0], // Orange
             indicator_secondary: [1.0, 0.0, 1.0, 1.0], // Magenta
             indicator_tertiary: [0.392, 0.314, 0.471, 1.0],
+            // Polygonal chart
+            poly_fill_top: [0.2, 0.6, 1.0, 0.5],    // Blue-ish, 50% opacity
+            poly_fill_bottom: [0.2, 0.6, 1.0, 0.0], // Same color, 0% opacity (fade out)
+            poly_line: [1.0, 0.8, 0.2, 1.0],        // Yellow border line
             // Price change intensity - green shades
             price_up_high: [0.055, 0.796, 0.506, 1.0], // Bright green
             price_up_mid: [0.039, 0.600, 0.380, 1.0],  // Medium green
@@ -128,6 +136,10 @@ impl GlTheme {
                 .unwrap_or(d.indicator_secondary),
             indicator_tertiary: parse_color(config.get("indicator.tertiary"))
                 .unwrap_or(d.indicator_tertiary),
+            poly_fill_top: parse_color(config.get("poly.fill.top")).unwrap_or(d.poly_fill_top),
+            poly_fill_bottom: parse_color(config.get("poly.fill.bottom"))
+                .unwrap_or(d.poly_fill_bottom),
+            poly_line: parse_color(config.get("poly.line")).unwrap_or(d.poly_line),
             price_up_high: parse_color(config.get("price.up.high")).unwrap_or(d.price_up_high),
             price_up_mid: parse_color(config.get("price.up.mid")).unwrap_or(d.price_up_mid),
             price_up_low: parse_color(config.get("price.up.low")).unwrap_or(d.price_up_low),

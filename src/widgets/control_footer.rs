@@ -1,5 +1,6 @@
 //! Control footer widget displaying keyboard shortcuts and selection info
 
+use crate::app::{ChartType, TimeWindow};
 use crate::base::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
@@ -63,9 +64,19 @@ pub fn build_overview_footer(
 }
 
 /// Build the control footer panel for Details view
-pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
+pub fn build_details_footer(
+    time_window: TimeWindow,
+    chart_type: ChartType,
+    theme: &GlTheme,
+) -> PanelBuilder {
     let gap = theme.panel_gap;
     let footer_height = theme.font_size * 3.0; // Derived from font size
+
+    let window_display = time_window.as_str();
+    let chart_display = match chart_type {
+        ChartType::Polygonal => "Poly",
+        ChartType::Candlestick => "Candle",
+    };
 
     panel()
         .width(percent(1.0))
@@ -84,6 +95,14 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
                 .child(panel().text("[◄►]", theme.accent_secondary, theme.font_normal))
                 .child(panel().text("Scroll Chart", theme.foreground, theme.font_normal)),
         )
+        // Zoom
+        .child(
+            panel()
+                .flex_direction(FlexDirection::Row)
+                .gap(gap / 2.0)
+                .child(panel().text("[▲▼]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Zoom", theme.foreground, theme.font_normal)),
+        )
         // Reset scroll
         .child(
             panel()
@@ -92,28 +111,22 @@ pub fn build_details_footer(theme: &GlTheme) -> PanelBuilder {
                 .child(panel().text("[Home/r]", theme.accent_secondary, theme.font_normal))
                 .child(panel().text("Reset", theme.foreground, theme.font_normal)),
         )
-        // Window change
+        // Window change with current value
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
                 .child(panel().text("[w]", theme.accent_secondary, theme.font_normal))
-                .child(panel().text("Window", theme.foreground, theme.font_normal)),
+                .child(panel().text("Window:", theme.foreground_muted, theme.font_normal))
+                .child(panel().text(window_display, theme.accent, theme.font_normal)),
         )
-        // Chart type
+        // Chart type with current value
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
                 .gap(gap / 2.0)
                 .child(panel().text("[c]", theme.accent_secondary, theme.font_normal))
-                .child(panel().text("Chart Type", theme.foreground, theme.font_normal)),
-        )
-        // Quit
-        .child(
-            panel()
-                .flex_direction(FlexDirection::Row)
-                .gap(gap / 2.0)
-                .child(panel().text("[q]", theme.accent_secondary, theme.font_normal))
-                .child(panel().text("Quit", theme.foreground, theme.font_normal)),
+                .child(panel().text("Chart:", theme.foreground_muted, theme.font_normal))
+                .child(panel().text(chart_display, theme.accent, theme.font_normal)),
         )
 }

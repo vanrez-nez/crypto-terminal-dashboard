@@ -9,7 +9,7 @@ pub enum View {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ChartType {
-    Line,
+    Polygonal,
     Candlestick,
 }
 
@@ -48,12 +48,12 @@ impl TimeWindow {
         }
     }
 
-    /// Returns the Coinbase API granularity in seconds for this time window
+    /// Returns the candle interval in seconds for this time window
     pub fn granularity(&self) -> u32 {
         match self {
             TimeWindow::Min15 => 900,   // 15 minutes
             TimeWindow::Hour1 => 3600,  // 1 hour
-            TimeWindow::Hour4 => 21600, // 6 hours (closest to 4h available)
+            TimeWindow::Hour4 => 14400, // 4 hours
             TimeWindow::Day1 => 86400,  // 1 day
         }
     }
@@ -96,17 +96,17 @@ impl App {
             provider: provider.to_string(),
             time_window: TimeWindow::Hour1,
             needs_candle_refresh: true, // Fetch candles on startup
-            chart_type: ChartType::Line,
+            chart_type: ChartType::Candlestick,
             candle_scroll_offset: 0,
             visible_candles: 50, // Default zoom level
         }
     }
 
-    /// Cycle between Line and Candlestick chart types
+    /// Cycle between Polygonal and Candlestick chart types
     pub fn cycle_chart_type(&mut self) {
         self.chart_type = match self.chart_type {
-            ChartType::Line => ChartType::Candlestick,
-            ChartType::Candlestick => ChartType::Line,
+            ChartType::Polygonal => ChartType::Candlestick,
+            ChartType::Candlestick => ChartType::Polygonal,
         };
     }
 

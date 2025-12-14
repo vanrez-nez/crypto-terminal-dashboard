@@ -1,14 +1,16 @@
 //! Details view - price charts and indicators for selected coins
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use crate::base::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
-use crate::app::{App, TimeWindow};
+use crate::app::{App, ChartType, TimeWindow};
 use crate::mock::CoinData;
 use crate::widgets::{
     control_footer::build_details_footer, indicator_panel::build_indicator_panel,
     price_panel::build_price_panel, status_header::build_status_header, theme::GlTheme,
-    titled_panel::titled_panel,
+    titled_panel::{titled_panel, titled_panel_with_badge},
 };
 
 /// Prefix for chart panel marker IDs
@@ -71,7 +73,15 @@ pub fn build_details_view(
         .enumerate()
         .map(|(chart_idx, (coin_idx, coin))| {
             chart_areas.push(ChartArea::new(*coin_idx));
-            build_coin_column(coin, count, app.time_window, chart_idx, theme, &spacing)
+            build_coin_column(
+                coin,
+                count,
+                app.time_window,
+                app.chart_type,
+                chart_idx,
+                theme,
+                &spacing,
+            )
         })
         .collect();
 
@@ -100,7 +110,10 @@ pub fn build_details_view(
                 .children(columns),
         )
         // Footer
-        .child(build_details_footer(theme).margin(spacing.footer_margin(), 0.0, 0.0, 0.0));
+        .child(
+            build_details_footer(app.time_window, app.chart_type, theme)
+                .margin(spacing.footer_margin(), 0.0, 0.0, 0.0),
+        );
 
     (view, chart_areas)
 }
@@ -109,12 +122,27 @@ fn build_coin_column(
     coin: &CoinData,
     _total_columns: usize,
     time_window: TimeWindow,
+    chart_type: ChartType,
     chart_idx: usize,
     theme: &GlTheme,
     spacing: &DetailsSpacing,
 ) -> PanelBuilder {
     let gap = spacing.vertical_gap;
     let symbol = &coin.symbol;
+
+    // Build chart panel with countdown badge for candlestick mode
+    let chart_panel = match chart_type {
+        ChartType::Candlestick => {
+            let countdown = candle_countdown(time_window.granularity() as u64);
+            titled_panel_with_badge(
+                "Chart",
+                Some((&countdown, theme.accent_secondary)),
+                theme,
+                build_chart_placeholder(chart_idx),
+            )
+        }
+        ChartType::Polygonal => titled_panel("Chart", theme, build_chart_placeholder(chart_idx)),
+    };
 
     panel()
         .flex_basis(length(0.0)) // Force equal width distribution
@@ -128,7 +156,7 @@ fn build_coin_column(
             build_price_panel(coin, time_window, theme),
         ))
         // Chart area (grows to fill, placeholder for ChartRenderer)
-        .child(titled_panel("Chart", theme, build_chart_placeholder(chart_idx)).flex_grow(1.0))
+        .child(chart_panel.flex_grow(1.0))
         // Indicator panel with title
         .child(titled_panel(
             "Indicators",
@@ -144,4 +172,27 @@ fn build_chart_placeholder(chart_idx: usize) -> PanelBuilder {
     panel()
         .flex_grow(1.0)
         .marker_id(format!("{}{}", CHART_PANEL_PREFIX, chart_idx))
+}
+
+/// Calculate time remaining until current candle closes
+fn candle_countdown(granularity_secs: u64) -> String {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    // Calculate seconds until next candle boundary
+    let elapsed_in_candle = now % granularity_secs;
+    let remaining = granularity_secs - elapsed_in_candle;
+
+    // Format as HH:MM:SS or MM:SS depending on duration
+    let hours = remaining / 3600;
+    let minutes = (remaining % 3600) / 60;
+    let seconds = remaining % 60;
+
+    if hours > 0 {
+        format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+    } else {
+        format!("{:02}:{:02}", minutes, seconds)
+    }
 }

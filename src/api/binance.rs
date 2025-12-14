@@ -170,7 +170,7 @@ pub fn granularity_to_interval(granularity: u32) -> &'static str {
     match granularity {
         900 => "15m",
         3600 => "1h",
-        21600 => "6h",
+        14400 => "4h",
         86400 => "1d",
         _ => "1h",
     }

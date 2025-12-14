@@ -246,6 +246,18 @@ impl PanelBuilder {
         self
     }
 
+    /// Set absolute position from right edge
+    pub fn absolute_right(mut self, right: f32, top: f32) -> Self {
+        self.taffy_style.position = Position::Absolute;
+        self.taffy_style.inset = Rect {
+            left: LengthPercentageAuto::Auto,
+            right: length(right),
+            top: length(top),
+            bottom: LengthPercentageAuto::Auto,
+        };
+        self
+    }
+
     /// Set overflow behavior (affects how children contribute to intrinsic size)
     /// Overflow::Scroll tells Taffy that children can overflow without expanding the container
     pub fn overflow(mut self, overflow_x: Overflow, overflow_y: Overflow) -> Self {

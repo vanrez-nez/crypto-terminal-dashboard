@@ -356,6 +356,60 @@ impl ChartRenderer {
         }
     }
 
+    /// Draw a filled area under a polyline with vertical gradient normalized to chart area
+    /// Color is interpolated based on Y position: chart_top_y gets top_color, chart_bottom_y gets bottom_color
+    /// This creates a uniform gradient across the entire chart regardless of line height
+    pub fn draw_gradient_filled_area(
+        &mut self,
+        points: &[(f32, f32)],
+        baseline_y: f32,
+        chart_top_y: f32,
+        top_color: [f32; 4],
+        bottom_color: [f32; 4],
+    ) {
+        if points.len() < 2 {
+            return;
+        }
+
+        let y_range = baseline_y - chart_top_y;
+        if y_range <= 0.0 {
+            return;
+        }
+
+        // Helper to interpolate color based on Y position in chart
+        let color_at_y = |y: f32| -> [f32; 4] {
+            let t = ((y - chart_top_y) / y_range).clamp(0.0, 1.0);
+            [
+                top_color[0] + (bottom_color[0] - top_color[0]) * t,
+                top_color[1] + (bottom_color[1] - top_color[1]) * t,
+                top_color[2] + (bottom_color[2] - top_color[2]) * t,
+                top_color[3] + (bottom_color[3] - top_color[3]) * t,
+            ]
+        };
+
+        for window in points.windows(2) {
+            let (x1, y1) = window[0];
+            let (x2, y2) = window[1];
+
+            // Calculate color at each vertex based on its Y position
+            let color1 = color_at_y(y1);
+            let color2 = color_at_y(y2);
+            let color_bottom = color_at_y(baseline_y);
+
+            // Triangle 1: (x1,y1), (x2,y2), (x1,baseline)
+            self.push_vertex(x1, y1, &color1);
+            self.push_vertex(x2, y2, &color2);
+            self.push_vertex(x1, baseline_y, &color_bottom);
+
+            // Triangle 2: (x2,y2), (x2,baseline), (x1,baseline)
+            self.push_vertex(x2, y2, &color2);
+            self.push_vertex(x2, baseline_y, &color_bottom);
+            self.push_vertex(x1, baseline_y, &color_bottom);
+
+            self.vertex_count += 6;
+        }
+    }
+
     /// Draw a marker (small filled circle approximated as octagon)
     pub fn draw_marker(&mut self, x: f32, y: f32, size: f32, color: [f32; 4]) {
         // Draw as a filled circle using triangles (8-sided polygon)

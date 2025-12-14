@@ -36,11 +36,10 @@ pub fn build_status_header(
     };
 
     let provider_display = capitalize(provider);
-    let window_display = time_window.as_str();
-    let chart_display = match chart_type {
-        ChartType::Line => "Line",
-        ChartType::Candlestick => "Candle",
-    };
+
+    // Suppress unused warnings - these are now shown in the footer
+    let _ = time_window;
+    let _ = chart_type;
 
     panel()
         .width(percent(1.0))
@@ -69,24 +68,14 @@ pub fn build_status_header(
                 .child(panel().text("Provider:", theme.foreground_muted, theme.font_normal))
                 .child(panel().text(&provider_display, theme.foreground, theme.font_normal)),
         )
-        // Time window
-        .child(
-            panel()
-                .flex_direction(FlexDirection::Row)
-                .gap(gap / 2.0)
-                .child(panel().text("[w]", theme.foreground_muted, theme.font_normal))
-                .child(panel().text("Window:", theme.foreground_muted, theme.font_normal))
-                .child(panel().text(window_display, theme.accent, theme.font_normal)),
-        )
-        // Chart type (only in Details view)
-        .child(
-            panel()
-                .flex_direction(FlexDirection::Row)
-                .gap(gap / 2.0)
-                .child(panel().text("[c]", theme.foreground_muted, theme.font_normal))
-                .child(panel().text("Chart:", theme.foreground_muted, theme.font_normal))
-                .child(panel().text(chart_display, theme.accent, theme.font_normal)),
-        )
         // Connection status
         .child(panel().text(status_text, status_color, theme.font_normal))
+        // Quit
+        .child(
+            panel()
+                .flex_direction(FlexDirection::Row)
+                .gap(gap / 2.0)
+                .child(panel().text("[q]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Quit", theme.foreground, theme.font_normal)),
+        )
 }

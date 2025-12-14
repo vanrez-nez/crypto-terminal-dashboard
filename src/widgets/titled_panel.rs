@@ -4,18 +4,23 @@ use crate::base::layout::{HAlign, VAlign};
 use crate::base::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
-use super::theme::GlTheme;
+use super::theme::{Color, GlTheme};
 
 /// Build a titled panel with the title sitting on the top border
 ///
 /// The title is positioned at the top-left corner, centered vertically on the border line.
 /// It has a background that masks the border behind it.
-///
-/// Structure:
-/// - Outer container
-///   - Title (naturally sized, with background to mask border)
-///   - Content panel with border, pulled up by half title height so border aligns with title center
 pub fn titled_panel(title: &str, theme: &GlTheme, content: PanelBuilder) -> PanelBuilder {
+    titled_panel_with_badge(title, None, theme, content)
+}
+
+/// Build a titled panel with optional right-aligned badge (e.g., countdown timer)
+pub fn titled_panel_with_badge(
+    title: &str,
+    badge: Option<(&str, Color)>,
+    theme: &GlTheme,
+    content: PanelBuilder,
+) -> PanelBuilder {
     // Calculate offset to align border with title center
     // Title text uses the theme's small font scale
     let text_scale = theme.font_small;
@@ -25,7 +30,7 @@ pub fn titled_panel(title: &str, theme: &GlTheme, content: PanelBuilder) -> Pane
     let title_center_offset = title_padding_v + font_height / 2.0;
     let title_left = theme.panel_padding + 4.0;
 
-    panel()
+    let mut builder = panel()
         .flex_direction(FlexDirection::Column)
         // Content panel with border first
         .child(
@@ -52,5 +57,20 @@ pub fn titled_panel(title: &str, theme: &GlTheme, content: PanelBuilder) -> Pane
                 .padding(title_padding_v, 6.0, title_padding_v, 6.0)
                 .text(&title.to_uppercase(), theme.accent, text_scale)
                 .text_align(HAlign::Left, VAlign::Center),
-        )
+        );
+
+    // Add badge on the right if provided
+    if let Some((badge_text, badge_color)) = badge {
+        let badge_right = theme.panel_padding + 4.0;
+        builder = builder.child(
+            panel()
+                .absolute_right(badge_right, 0.0)
+                .background(theme.background)
+                .padding(title_padding_v, 6.0, title_padding_v, 6.0)
+                .text(badge_text, badge_color, text_scale)
+                .text_align(HAlign::Right, VAlign::Center),
+        );
+    }
+
+    builder
 }

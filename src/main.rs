@@ -23,6 +23,7 @@ use events::handle_gl_events;
 use mock::{coins_from_pairs, generate_mock_coins};
 use views::CHART_PANEL_PREFIX;
 use widgets::candlestick_chart::render_candlestick_chart;
+use widgets::polygonal_chart::render_polygonal_chart;
 use widgets::chart_renderer::{ChartRenderer, PixelRect};
 use widgets::theme::GlTheme;
 
@@ -205,7 +206,7 @@ fn run_gl_loop(
         );
 
         // 8. Chart rendering
-        if app.chart_type == ChartType::Candlestick && !view_result.chart_areas.is_empty() {
+        if !view_result.chart_areas.is_empty() {
             // Find chart panel bounds from layout
             let chart_bounds = tree.find_panels_by_prefix(view_result.root, CHART_PANEL_PREFIX);
 
@@ -228,15 +229,26 @@ fn run_gl_loop(
                         }
 
                         chart_renderer.begin();
-                        render_candlestick_chart(
-                            chart_renderer,
-                            &coin.candles,
-                            app.candle_scroll_offset,
-                            app.visible_candles,
-                            0.05, // 5% price margin
-                            rect,
-                            theme,
-                        );
+                        match app.chart_type {
+                            ChartType::Candlestick => render_candlestick_chart(
+                                chart_renderer,
+                                &coin.candles,
+                                app.candle_scroll_offset,
+                                app.visible_candles,
+                                0.05, // 5% price margin
+                                rect,
+                                theme,
+                            ),
+                            ChartType::Polygonal => render_polygonal_chart(
+                                chart_renderer,
+                                &coin.candles,
+                                app.candle_scroll_offset,
+                                app.visible_candles,
+                                0.05, // 5% price margin
+                                rect,
+                                theme,
+                            ),
+                        }
                         chart_renderer.end(&display.gl, width, height);
 
                         unsafe {
