@@ -1,3 +1,4 @@
+use crate::api::news::NewsArticle;
 use crate::api::PriceUpdate;
 use crate::mock::CoinData;
 use crate::notifications::NotificationManager;
@@ -7,6 +8,7 @@ pub enum View {
     Overview,
     Details,
     Notifications,
+    News,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -84,6 +86,16 @@ pub struct App {
     pub notification_scroll: usize,
     /// Whether ticker tones are muted
     pub ticker_muted: bool,
+    /// News articles from API
+    pub news_articles: Vec<NewsArticle>,
+    /// Selected news article index
+    pub news_selected: usize,
+    /// Scroll offset for news content (line-based)
+    pub news_content_scroll: usize,
+    /// Whether news is currently being fetched
+    pub news_loading: bool,
+    /// Flag to trigger news refresh
+    pub needs_news_refresh: bool,
 }
 
 impl App {
@@ -118,6 +130,11 @@ impl App {
             notification_manager,
             notification_scroll: 0,
             ticker_muted: false,
+            news_articles: Vec::new(),
+            news_selected: 0,
+            news_content_scroll: 0,
+            news_loading: false,
+            needs_news_refresh: false,
         }
     }
 
@@ -206,30 +223,71 @@ impl App {
         if self.view == View::Notifications {
             self.notification_manager.mark_all_read();
         }
-        self.view = match self.view {
+
+        let next_view = match self.view {
             View::Overview => View::Details,
             View::Details => View::Notifications,
-            View::Notifications => View::Overview,
+            View::Notifications => View::News,
+            View::News => View::Overview,
         };
+
+        // Trigger news refresh when entering News view
+        if next_view == View::News && self.news_articles.is_empty() {
+            self.needs_news_refresh = true;
+        }
+
+        self.view = next_view;
     }
 
-    /// Scroll notifications list up
-    pub fn scroll_notifications_up(&mut self) {
-        if self.notification_scroll > 0 {
-            self.notification_scroll -= 1;
+    /// Request news refresh
+    pub fn refresh_news(&mut self) {
+        self.needs_news_refresh = true;
+    }
+
+    /// Select previous news article
+    pub fn scroll_news_up(&mut self) {
+        if self.news_selected > 0 {
+            self.news_selected -= 1;
+            self.news_content_scroll = 0; // Reset content scroll on selection change
         }
     }
 
-    /// Scroll notifications list down
-    pub fn scroll_notifications_down(&mut self) {
-        let max_scroll = self
-            .notification_manager
-            .notifications
-            .len()
-            .saturating_sub(10);
-        if self.notification_scroll < max_scroll {
-            self.notification_scroll += 1;
+    /// Select next news article
+    pub fn scroll_news_down(&mut self) {
+        if !self.news_articles.is_empty() && self.news_selected < self.news_articles.len() - 1 {
+            self.news_selected += 1;
+            self.news_content_scroll = 0; // Reset content scroll on selection change
         }
+    }
+
+    /// Scroll content up (for article body)
+    pub fn scroll_content_up(&mut self) {
+        if self.news_content_scroll > 0 {
+            self.news_content_scroll -= 1;
+        }
+    }
+
+    /// Scroll content down (for article body)
+    pub fn scroll_content_down(&mut self) {
+        self.news_content_scroll += 1;
+    }
+
+    /// Set news articles from API response
+    pub fn set_news(&mut self, articles: Vec<NewsArticle>) {
+        self.news_articles = articles;
+        self.news_loading = false;
+        self.news_selected = 0;
+        self.news_content_scroll = 0;
+    }
+
+    /// Get selected coin symbols for news filtering
+    pub fn selected_symbols(&self) -> Vec<String> {
+        self.checked
+            .iter()
+            .enumerate()
+            .filter(|(_, &checked)| checked)
+            .filter_map(|(i, _)| self.coins.get(i).map(|c| c.symbol.clone()))
+            .collect()
     }
 
     /// Toggle the currently selected notification rule

@@ -59,11 +59,8 @@ impl CandleIndicators {
         let changes: Vec<f64> = prices.windows(2).map(|w| w[1] - w[0]).collect();
 
         // Initialize with first period average
-        let mut avg_gain: f64 = changes[..period]
-            .iter()
-            .filter(|&&c| c > 0.0)
-            .sum::<f64>()
-            / period as f64;
+        let mut avg_gain: f64 =
+            changes[..period].iter().filter(|&&c| c > 0.0).sum::<f64>() / period as f64;
 
         let mut avg_loss: f64 = changes[..period]
             .iter()

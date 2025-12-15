@@ -8,6 +8,7 @@ use taffy::prelude::*;
 use super::format::capitalize;
 use super::theme::GlTheme;
 use crate::app::{ChartType, ConnectionStatus, TimeWindow, View};
+use crate::base::view::header_height;
 
 /// Build the status header panel
 pub fn build_status_header(
@@ -20,13 +21,34 @@ pub fn build_status_header(
     theme: &GlTheme,
 ) -> PanelBuilder {
     let gap = theme.panel_gap;
-    let header_height = theme.font_size * 3.0; // Derived from font size
+    let header_height = header_height(theme); // Derived from theme sizing
 
     // View tabs
-    let (overview_color, details_color, alerts_color) = match view {
-        View::Overview => (theme.accent, theme.foreground_inactive, theme.foreground_inactive),
-        View::Details => (theme.foreground_inactive, theme.accent, theme.foreground_inactive),
-        View::Notifications => (theme.foreground_inactive, theme.foreground_inactive, theme.accent),
+    let (overview_color, details_color, alerts_color, news_color) = match view {
+        View::Overview => (
+            theme.accent,
+            theme.foreground_inactive,
+            theme.foreground_inactive,
+            theme.foreground_inactive,
+        ),
+        View::Details => (
+            theme.foreground_inactive,
+            theme.accent,
+            theme.foreground_inactive,
+            theme.foreground_inactive,
+        ),
+        View::Notifications => (
+            theme.foreground_inactive,
+            theme.foreground_inactive,
+            theme.accent,
+            theme.foreground_inactive,
+        ),
+        View::News => (
+            theme.foreground_inactive,
+            theme.foreground_inactive,
+            theme.foreground_inactive,
+            theme.accent,
+        ),
     };
 
     // Connection status
@@ -59,7 +81,8 @@ pub fn build_status_header(
                 .gap(gap / 2.0)
                 .child(panel().text("[Overview]", overview_color, theme.font_normal))
                 .child(panel().text("[Details]", details_color, theme.font_normal))
-                .child(build_alerts_tab(alerts_color, unread_count, theme)),
+                .child(build_alerts_tab(alerts_color, unread_count, theme))
+                .child(panel().text("[News]", news_color, theme.font_normal)),
         )
         // Spacer
         .child(panel().flex_grow(1.0))
@@ -97,13 +120,11 @@ fn build_alerts_tab(color: [f32; 4], unread_count: usize, theme: &GlTheme) -> Pa
                 panel()
                     .background(theme.negative)
                     .padding(1.0, 4.0, 1.0, 4.0)
-                    .child(
-                        panel().text(
-                            &format!("{}", unread_count),
-                            theme.foreground,
-                            theme.font_small,
-                        ),
-                    ),
+                    .child(panel().text(
+                        &format!("{}", unread_count),
+                        theme.foreground,
+                        theme.font_small,
+                    )),
             )
             .child(panel().text("]", color, theme.font_normal))
     } else {

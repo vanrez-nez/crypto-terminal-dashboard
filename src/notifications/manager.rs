@@ -189,7 +189,13 @@ impl NotificationManager {
                 coin.symbol, period, dir_text, threshold, rsi
             );
 
-            return Some(Notification::new(&coin.symbol, &message, "rsi", severity, sound));
+            return Some(Notification::new(
+                &coin.symbol,
+                &message,
+                "rsi",
+                severity,
+                sound,
+            ));
         }
 
         None
@@ -332,11 +338,6 @@ impl NotificationManager {
     /// Get rules slice for display
     pub fn get_rules(&self) -> &[NotificationRule] {
         &self.rules
-    }
-
-    /// Check if any rules are enabled
-    pub fn has_enabled_rules(&self) -> bool {
-        self.rules.iter().any(|r| r.is_enabled())
     }
 }
 

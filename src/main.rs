@@ -17,6 +17,7 @@ use crate::base::{
 use glow::HasContext;
 
 use api::binance::{fetch_candles, granularity_to_interval, BinanceProvider};
+use api::news::{fetch_all_news, NewsArticle};
 use api::PriceUpdate;
 use app::{App, ChartType};
 use config::Config;
@@ -25,8 +26,8 @@ use mock::{coins_from_pairs, generate_mock_coins};
 use notifications::{audio, persistence, NotificationManager};
 use views::CHART_PANEL_PREFIX;
 use widgets::candlestick_chart::render_candlestick_chart;
-use widgets::polygonal_chart::render_polygonal_chart;
 use widgets::chart_renderer::{ChartRenderer, PixelRect};
+use widgets::polygonal_chart::render_polygonal_chart;
 use widgets::theme::GlTheme;
 
 // Font data embedded from fonts directory
@@ -34,6 +35,9 @@ const FONT_DATA: &[u8] = include_bytes!("../fonts/CascadiaMonoPL.ttf");
 const FONT_SIZE: f32 = 17.0;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Load environment variables from .env if present (for API keys)
+    let _ = dotenvy::dotenv();
+
     // Create tokio runtime manually (not async main)
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -66,6 +70,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create channels for price updates and candle requests
     let (price_tx, mut price_rx) = mpsc::channel::<PriceUpdate>(100);
     let (candle_req_tx, mut candle_req_rx) = mpsc::channel::<(String, u32)>(32);
+
+    // Create channel for news updates
+    let (news_tx, mut news_rx) = mpsc::channel::<Vec<NewsArticle>>(10);
+    let (news_req_tx, mut news_req_rx) = mpsc::channel::<Vec<String>>(10);
 
     // Determine provider
     let provider = config.provider();
@@ -131,6 +139,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
+    // Spawn news fetcher task (always available)
+    rt.spawn(async move {
+        while let Some(coins) = news_req_rx.recv().await {
+            let articles = fetch_all_news(&coins).await;
+            let _ = news_tx.send(articles).await;
+        }
+    });
+
     // Initialize keyboard input (evdev-based)
     let mut keyboard = KeyboardInput::new();
 
@@ -141,6 +157,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut keyboard,
         &mut price_rx,
         candle_req_tx,
+        news_req_tx,
+        &mut news_rx,
         &rt,
         &pairs,
         &atlas,
@@ -162,6 +180,8 @@ fn run_gl_loop(
     keyboard: &mut KeyboardInput,
     price_rx: &mut mpsc::Receiver<PriceUpdate>,
     candle_req_tx: mpsc::Sender<(String, u32)>,
+    news_req_tx: mpsc::Sender<Vec<String>>,
+    news_rx: &mut mpsc::Receiver<Vec<NewsArticle>>,
     rt: &tokio::runtime::Runtime,
     pairs: &[String],
     atlas: &FontAtlas,
@@ -192,6 +212,19 @@ fn run_gl_loop(
             }
         }
 
+        // 2.5. Handle news refresh requests
+        if app.needs_news_refresh {
+            app.needs_news_refresh = false;
+            app.news_loading = true;
+            let selected_symbols = app.selected_symbols();
+            let _ = rt.block_on(news_req_tx.send(selected_symbols));
+        }
+
+        // 2.6. Process news updates (non-blocking)
+        if let Ok(articles) = news_rx.try_recv() {
+            app.set_news(articles);
+        }
+
         // 3. Process price updates (non-blocking)
         while let Ok(update) = price_rx.try_recv() {
             app.handle_update(update);
@@ -204,7 +237,9 @@ fn run_gl_loop(
 
         // 4. Check notification rules after price updates (checked coins only)
         if notifications_enabled {
-            let new_notifications = app.notification_manager.check_rules(&app.coins, &app.checked);
+            let new_notifications = app
+                .notification_manager
+                .check_rules(&app.coins, &app.checked);
             if !new_notifications.is_empty() {
                 // Play audio for each new notification
                 if audio_enabled {
@@ -258,10 +293,20 @@ fn run_gl_loop(
             // Match chart areas with their resolved bounds and render
             for chart_area in &view_result.chart_areas {
                 // Find the matching bounds by chart index
-                let marker_id = format!("{}{}", CHART_PANEL_PREFIX,
-                    view_result.chart_areas.iter().position(|a| a.coin_index == chart_area.coin_index).unwrap_or(0));
+                let marker_id = format!(
+                    "{}{}",
+                    CHART_PANEL_PREFIX,
+                    view_result
+                        .chart_areas
+                        .iter()
+                        .position(|a| a.coin_index == chart_area.coin_index)
+                        .unwrap_or(0)
+                );
 
-                if let Some((_, x, y, w, h)) = chart_bounds.iter().find(|(id, _, _, _, _)| id == &marker_id) {
+                if let Some((_, x, y, w, h)) = chart_bounds
+                    .iter()
+                    .find(|(id, _, _, _, _)| id == &marker_id)
+                {
                     if let Some(coin) = app.coins.get(chart_area.coin_index) {
                         let rect = PixelRect::new(*x, *y, *w, *h);
 
@@ -270,7 +315,9 @@ fn run_gl_loop(
                             display.gl.enable(glow::SCISSOR_TEST);
                             // GL scissor uses bottom-left origin, convert from top-left
                             let scissor_y = height as i32 - (*y as i32 + *h as i32);
-                            display.gl.scissor(*x as i32, scissor_y, *w as i32, *h as i32);
+                            display
+                                .gl
+                                .scissor(*x as i32, scissor_y, *w as i32, *h as i32);
                         }
 
                         chart_renderer.begin();
@@ -326,7 +373,9 @@ fn build_current_view(
     height: f32,
 ) -> ViewResult {
     use crate::app::View;
-    use crate::views::{build_details_view, build_notifications_view, build_overview_view};
+    use crate::views::{
+        build_details_view, build_news_view, build_notifications_view, build_overview_view,
+    };
 
     match app.view {
         View::Overview => ViewResult {
@@ -342,6 +391,10 @@ fn build_current_view(
         }
         View::Notifications => ViewResult {
             root: build_notifications_view(app, theme, width, height).build(tree),
+            chart_areas: vec![],
+        },
+        View::News => ViewResult {
+            root: build_news_view(app, theme, width, height).build(tree),
             chart_areas: vec![],
         },
     }

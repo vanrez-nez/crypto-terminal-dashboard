@@ -76,9 +76,9 @@ impl Default for GlTheme {
             indicator_secondary: [1.0, 0.0, 1.0, 1.0], // Magenta
             indicator_tertiary: [0.392, 0.314, 0.471, 1.0],
             // Polygonal chart
-            poly_fill_top: [0.2, 0.6, 1.0, 0.5],    // Blue-ish, 50% opacity
+            poly_fill_top: [0.2, 0.6, 1.0, 0.5], // Blue-ish, 50% opacity
             poly_fill_bottom: [0.2, 0.6, 1.0, 0.0], // Same color, 0% opacity (fade out)
-            poly_line: [1.0, 0.8, 0.2, 1.0],        // Yellow border line
+            poly_line: [1.0, 0.8, 0.2, 1.0],     // Yellow border line
             // Price change intensity - green shades
             price_up_high: [0.055, 0.796, 0.506, 1.0], // Bright green
             price_up_mid: [0.039, 0.600, 0.380, 1.0],  // Medium green

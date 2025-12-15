@@ -7,6 +7,7 @@ pub mod input;
 pub mod layout;
 pub mod renderer;
 pub mod text_renderer;
+pub mod view;
 
 pub use drm_display::Display;
 pub use focus::FocusManager;

@@ -90,8 +90,16 @@ impl CoinData {
         if let Some(last) = self.candles.last() {
             // Use last candle's high/low (current period)
             // Filter out invalid values
-            let high = if last.high > 0.0 { last.high } else { self.high_24h };
-            let low = if last.low > 0.0 { last.low } else { self.low_24h };
+            let high = if last.high > 0.0 {
+                last.high
+            } else {
+                self.high_24h
+            };
+            let low = if last.low > 0.0 {
+                last.low
+            } else {
+                self.low_24h
+            };
             (high, low)
         } else {
             (self.high_24h, self.low_24h)

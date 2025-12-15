@@ -10,7 +10,11 @@ use super::theme::GlTheme;
 use crate::mock::CoinData;
 
 /// Build the price panel - 3 inline columns: Price+Arrow, Change, High/Low
-pub fn build_price_panel(coin: &CoinData, time_window: TimeWindow, theme: &GlTheme) -> PanelBuilder {
+pub fn build_price_panel(
+    coin: &CoinData,
+    time_window: TimeWindow,
+    theme: &GlTheme,
+) -> PanelBuilder {
     let price_text = format_price(coin.price);
     let gap = theme.panel_gap;
 
@@ -112,11 +116,7 @@ fn build_range_indicator(position: f64, theme: &GlTheme) -> PanelBuilder {
                 .flex_direction(FlexDirection::Row)
                 // Push triangle up by bar height to align with bar
                 .margin(0.0, 0.0, -bar_height, 0.0)
-                .child(
-                    panel()
-                        .width(percent(left_pct / 100.0))
-                        .height(length(0.0)),
-                )
+                .child(panel().width(percent(left_pct / 100.0)).height(length(0.0)))
                 .child(panel().text("▼", theme.foreground, theme.font_small)),
         )
         // Dim background bar

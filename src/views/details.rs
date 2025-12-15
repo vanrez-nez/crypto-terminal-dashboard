@@ -6,10 +6,14 @@ use crate::base::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
 use crate::app::{App, ChartType, TimeWindow};
+use crate::base::view::ViewSpacing;
 use crate::mock::CoinData;
 use crate::widgets::{
-    control_footer::build_details_footer, indicator_panel::build_indicator_panel,
-    price_panel::build_price_panel, status_header::build_status_header, theme::GlTheme,
+    control_footer::build_details_footer,
+    indicator_panel::build_indicator_panel,
+    price_panel::build_price_panel,
+    status_header::build_status_header,
+    theme::GlTheme,
     titled_panel::{titled_panel, titled_panel_with_badge},
 };
 
@@ -29,31 +33,6 @@ impl ChartArea {
     }
 }
 
-/// Spacing configuration for the details layout.
-#[derive(Clone, Copy)]
-struct DetailsSpacing {
-    outer_padding: f32,
-    vertical_gap: f32,
-    column_gap: f32,
-    footer_gap: f32,
-}
-
-impl DetailsSpacing {
-    fn new(theme: &GlTheme) -> Self {
-        let base = theme.panel_gap;
-        Self {
-            outer_padding: base,
-            vertical_gap: base,
-            column_gap: base,
-            footer_gap: base * 2.0,
-        }
-    }
-
-    fn footer_margin(&self) -> f32 {
-        (self.footer_gap - self.vertical_gap).max(0.0)
-    }
-}
-
 pub fn build_details_view(
     app: &App,
     theme: &GlTheme,
@@ -63,7 +42,7 @@ pub fn build_details_view(
     // Use active_coins which falls back to highlighted coin if none selected
     let active_coins = app.active_coins();
     let count = active_coins.len();
-    let spacing = DetailsSpacing::new(theme);
+    let spacing = ViewSpacing::new(theme);
 
     let mut chart_areas = Vec::new();
 
@@ -85,36 +64,37 @@ pub fn build_details_view(
         })
         .collect();
 
-    let view = panel()
-        .width(length(width))
-        .height(length(height))
-        .flex_direction(FlexDirection::Column)
-        .gap(spacing.vertical_gap)
-        .padding_all(spacing.outer_padding)
-        .background(theme.background)
-        // Header
-        .child(build_status_header(
-            app.view,
-            &app.provider,
-            app.time_window,
-            app.chart_type,
-            app.connection_status,
-            app.notification_manager.unread_count,
-            theme,
-        ))
-        // Coin columns (horizontal layout)
-        .child(
-            panel()
-                .flex_grow(1.0)
-                .flex_direction(FlexDirection::Row)
-                .gap(spacing.column_gap)
-                .children(columns),
-        )
-        // Footer
-        .child(
-            build_details_footer(app.time_window, app.chart_type, app.ticker_muted, theme)
-                .margin(spacing.footer_margin(), 0.0, 0.0, 0.0),
-        );
+    let view =
+        panel()
+            .width(length(width))
+            .height(length(height))
+            .flex_direction(FlexDirection::Column)
+            .gap(spacing.section_gap)
+            .padding_all(spacing.outer_padding)
+            .background(theme.background)
+            // Header
+            .child(build_status_header(
+                app.view,
+                &app.provider,
+                app.time_window,
+                app.chart_type,
+                app.connection_status,
+                app.notification_manager.unread_count,
+                theme,
+            ))
+            // Coin columns (horizontal layout)
+            .child(
+                panel()
+                    .flex_grow(1.0)
+                    .flex_direction(FlexDirection::Row)
+                    .gap(spacing.column_gap)
+                    .children(columns),
+            )
+            // Footer
+            .child(
+                build_details_footer(app.time_window, app.chart_type, app.ticker_muted, theme)
+                    .margin(spacing.footer_margin(), 0.0, 0.0, 0.0),
+            );
 
     (view, chart_areas)
 }
@@ -126,9 +106,9 @@ fn build_coin_column(
     chart_type: ChartType,
     chart_idx: usize,
     theme: &GlTheme,
-    spacing: &DetailsSpacing,
+    spacing: &ViewSpacing,
 ) -> PanelBuilder {
-    let gap = spacing.vertical_gap;
+    let gap = spacing.section_gap;
     let symbol = &coin.symbol;
 
     // Build chart panel with countdown badge for candlestick mode

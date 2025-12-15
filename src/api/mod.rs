@@ -1,5 +1,6 @@
 pub mod binance;
 pub mod coinbase;
+pub mod news;
 
 /// OHLC candle data
 #[derive(Debug, Clone)]

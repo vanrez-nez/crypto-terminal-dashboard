@@ -323,6 +323,12 @@ impl PanelBuilder {
         self
     }
 
+    /// Set custom content directly.
+    pub fn content(mut self, content: Content) -> Self {
+        self.panel_style.content = content;
+        self
+    }
+
     /// Enable overflow clipping
     pub fn clip(mut self, clip: bool) -> Self {
         self.panel_style.clip_overflow = clip;

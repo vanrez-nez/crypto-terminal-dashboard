@@ -1,116 +1,74 @@
-/// Represents a distinct screen/tab in the application
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum View {
-    Overview,   // Combined stats + processes + logs
-    Stats,      // Full-screen stats panel
-    Processes,  // Full-screen process list
-    Logs,       // Full-screen log viewer
-    GlyphDebug, // Glyph metrics visualization
+use crate::widgets::theme::GlTheme;
+
+/// Standard spacing used across all views.
+#[derive(Clone, Copy)]
+pub struct ViewSpacing {
+    pub outer_padding: f32,
+    pub section_gap: f32,
+    pub footer_gap: f32,
+    pub column_gap: f32,
 }
 
-impl View {
-    pub fn all() -> &'static [View] {
-        &[
-            View::Overview,
-            View::Stats,
-            View::Processes,
-            View::Logs,
-            View::GlyphDebug,
-        ]
-    }
-
-    pub fn label(&self) -> &'static str {
-        match self {
-            View::Overview => "Overview",
-            View::Stats => "Stats",
-            View::Processes => "Processes",
-            View::Logs => "Logs",
-            View::GlyphDebug => "Glyphs",
-        }
-    }
-
-    pub fn index(&self) -> usize {
-        match self {
-            View::Overview => 0,
-            View::Stats => 1,
-            View::Processes => 2,
-            View::Logs => 3,
-            View::GlyphDebug => 4,
-        }
-    }
-
-    pub fn from_index(i: usize) -> Option<View> {
-        match i {
-            0 => Some(View::Overview),
-            1 => Some(View::Stats),
-            2 => Some(View::Processes),
-            3 => Some(View::Logs),
-            4 => Some(View::GlyphDebug),
-            _ => None,
-        }
-    }
-}
-
-/// Manages view switching
-pub struct ViewManager {
-    current: View,
-    previous: View,
-}
-
-impl ViewManager {
-    pub fn new() -> Self {
+impl ViewSpacing {
+    pub fn new(theme: &GlTheme) -> Self {
+        let base = theme.panel_gap;
         Self {
-            current: View::Overview,
-            previous: View::Overview,
+            outer_padding: base,
+            section_gap: base,
+            footer_gap: base * 2.0,
+            column_gap: base,
         }
     }
 
-    pub fn current(&self) -> View {
-        self.current
-    }
-
-    /// Returns true if the view changed since last check
-    pub fn changed(&self) -> bool {
-        self.current != self.previous
-    }
-
-    /// Call after handling view change
-    pub fn acknowledge_change(&mut self) {
-        self.previous = self.current;
-    }
-
-    pub fn next(&mut self) {
-        let idx = (self.current.index() + 1) % View::all().len();
-        self.current = View::from_index(idx).unwrap();
-    }
-
-    pub fn previous(&mut self) {
-        let len = View::all().len();
-        let idx = (self.current.index() + len - 1) % len;
-        self.current = View::from_index(idx).unwrap();
-    }
-
-    pub fn set(&mut self, view: View) {
-        self.current = view;
-    }
-
-    /// Returns the focus order for the current view
-    pub fn focus_order(&self) -> Vec<String> {
-        match self.current {
-            View::Overview => vec!["stats", "processes", "logs"],
-            View::Stats => vec!["cpu_detail", "ram_detail", "disk_detail", "network_detail"],
-            View::Processes => vec!["process_list"],
-            View::Logs => vec!["log_viewer"],
-            View::GlyphDebug => vec!["glyph_display"],
-        }
-        .into_iter()
-        .map(String::from)
-        .collect()
+    pub fn footer_margin(&self) -> f32 {
+        (self.footer_gap - self.section_gap).max(0.0)
     }
 }
 
-impl Default for ViewManager {
-    fn default() -> Self {
-        Self::new()
+/// Precomputed dimensions for a view, derived from the theme and spacing.
+#[derive(Clone, Copy)]
+pub struct ViewMetrics {
+    pub inner_width: f32,
+    pub header_height: f32,
+    pub footer_height: f32,
+    pub content_height: f32,
+}
+
+impl ViewMetrics {
+    pub fn new(width: f32, height: f32, spacing: &ViewSpacing, theme: &GlTheme) -> Self {
+        let header_height = header_height(theme);
+        let footer_height = footer_height(theme);
+        let inner_width = inner_width(width, spacing.outer_padding);
+
+        // Remaining space after padding, header/footer, gaps, and footer margin.
+        let content_height = (height
+            - spacing.outer_padding * 2.0
+            - header_height
+            - footer_height
+            - spacing.section_gap * 2.0
+            - spacing.footer_margin())
+        .max(0.0);
+
+        Self {
+            inner_width,
+            header_height,
+            footer_height,
+            content_height,
+        }
     }
+}
+
+/// Standard status header height derived from theme sizing.
+pub fn header_height(theme: &GlTheme) -> f32 {
+    theme.font_size * 3.0
+}
+
+/// Standard footer height shared across views.
+pub fn footer_height(theme: &GlTheme) -> f32 {
+    theme.font_size * 3.0
+}
+
+/// Compute inner width for a panel given total width and horizontal padding.
+pub fn inner_width(total_width: f32, padding: f32) -> f32 {
+    (total_width - padding * 2.0).max(0.0)
 }

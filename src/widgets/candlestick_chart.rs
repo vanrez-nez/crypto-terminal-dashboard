@@ -121,7 +121,9 @@ fn render_candles(
             theme.candle_bearish
         };
 
-        renderer.draw_candle(x, open_y, high_y, low_y, close_y, body_width, wick_width, color);
+        renderer.draw_candle(
+            x, open_y, high_y, low_y, close_y, body_width, wick_width, color,
+        );
     }
 }
 

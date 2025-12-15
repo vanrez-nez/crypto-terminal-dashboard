@@ -176,6 +176,55 @@ fn render_node(
             let text_y = base_y - style.scroll_offset;
 
             text_renderer.draw_text(font_atlas, text, text_x, text_y, scale, color);
+        } else if let Content::WrappedTextBox {
+            ref text,
+            color,
+            scale,
+            scroll_offset,
+            line_gap,
+            indicator_color,
+            indicator_scale,
+        } = style.content
+        {
+            // Calculate content area for text positioning
+            let padding = &layout.padding;
+            let content_x = abs_x + padding.left;
+            let content_y = abs_y + padding.top;
+            let content_width = width - padding.left - padding.right;
+            let content_height = height - padding.top - padding.bottom;
+
+            // Wrap text to available width
+            let wrapped = wrap_text_with_atlas(font_atlas, text, content_width, scale);
+            let line_height = line_height_with_atlas(font_atlas, scale);
+
+            // Determine how many lines fit
+            let line_step = line_height + line_gap;
+            let visible_lines =
+                ((content_height / line_step).floor() as usize).max(1);
+
+            let start = scroll_offset.min(wrapped.lines.len().saturating_sub(1));
+            let end = (start + visible_lines).min(wrapped.lines.len());
+
+            // Render visible lines top-aligned
+            let mut cursor_y = content_y + line_height;
+            for line in wrapped.lines.iter().skip(start).take(end - start) {
+                text_renderer.draw_text(font_atlas, line, content_x, cursor_y, scale, color);
+                cursor_y += line_step;
+            }
+
+            // Scroll indicator if more content
+            if wrapped.lines.len() > end {
+                let remaining = wrapped.lines.len().saturating_sub(end);
+                let indicator = format!("... {} more lines [PgDn]", remaining);
+                text_renderer.draw_text(
+                    font_atlas,
+                    &indicator,
+                    content_x,
+                    cursor_y,
+                    indicator_scale,
+                    indicator_color,
+                );
+            }
         }
     }
 
@@ -212,4 +261,80 @@ fn render_node(
             scissor_stack.pop(gl);
         }
     }
+}
+
+#[derive(Default)]
+struct WrappedLines {
+    lines: Vec<String>,
+}
+
+fn line_height_with_atlas(atlas: &FontAtlas, scale: f32) -> f32 {
+    atlas.line_height * scale
+}
+
+fn char_advance(atlas: &FontAtlas, ch: char, scale: f32) -> f32 {
+    atlas
+        .get_glyph(ch)
+        .map(|g| g.advance * scale)
+        .unwrap_or(scale * 8.0)
+}
+
+fn wrap_text_with_atlas(
+    atlas: &FontAtlas,
+    text: &str,
+    max_width: f32,
+    scale: f32,
+) -> WrappedLines {
+    let space_width = char_advance(atlas, ' ', scale);
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
+    let mut current_width = 0.0f32;
+
+    for word in text.split_whitespace() {
+        let word_width: f32 = word.chars().map(|c| char_advance(atlas, c, scale)).sum();
+        let needed = if current_line.is_empty() {
+            word_width
+        } else {
+            current_width + space_width + word_width
+        };
+
+        if needed <= max_width {
+            if !current_line.is_empty() {
+                current_line.push(' ');
+                current_width += space_width;
+            }
+            current_line.push_str(word);
+            current_width += word_width;
+        } else {
+            if !current_line.is_empty() {
+                lines.push(current_line);
+            }
+            // If single word is longer than line, hard wrap by char
+            if word_width > max_width {
+                let mut chunk = String::new();
+                let mut chunk_width = 0.0f32;
+                for ch in word.chars() {
+                    let w = char_advance(atlas, ch, scale);
+                    if chunk_width + w > max_width && !chunk.is_empty() {
+                        lines.push(chunk);
+                        chunk = String::new();
+                        chunk_width = 0.0;
+                    }
+                    chunk.push(ch);
+                    chunk_width += w;
+                }
+                current_line = chunk;
+                current_width = chunk_width;
+            } else {
+                current_line = word.to_string();
+                current_width = word_width;
+            }
+        }
+    }
+
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+
+    WrappedLines { lines }
 }

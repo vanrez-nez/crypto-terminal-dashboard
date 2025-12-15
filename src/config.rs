@@ -254,7 +254,9 @@ impl Config {
 
     /// Load theme configuration by name, returns None if not found
     pub fn theme_config(&self) -> Option<ThemeConfig> {
-        self.theme.as_ref().and_then(|name| ThemeConfig::load_by_name(name))
+        self.theme
+            .as_ref()
+            .and_then(|name| ThemeConfig::load_by_name(name))
     }
 
     /// Get notifications config or default
@@ -292,13 +294,5 @@ impl Config {
             .as_ref()
             .map(|n| n.ticker_tones.clone())
             .unwrap_or_default()
-    }
-
-    /// Check if ticker tones are enabled
-    pub fn ticker_tones_enabled(&self) -> bool {
-        self.notifications
-            .as_ref()
-            .map(|n| n.ticker_tones.enabled)
-            .unwrap_or(false)
     }
 }

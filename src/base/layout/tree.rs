@@ -125,7 +125,11 @@ impl LayoutTree {
     /// Find all nodes with a panel_id matching the given prefix and return their absolute bounds
     ///
     /// Returns a Vec of (panel_id, x, y, width, height) tuples
-    pub fn find_panels_by_prefix(&self, root: NodeId, prefix: &str) -> Vec<(String, f32, f32, f32, f32)> {
+    pub fn find_panels_by_prefix(
+        &self,
+        root: NodeId,
+        prefix: &str,
+    ) -> Vec<(String, f32, f32, f32, f32)> {
         let mut results = Vec::new();
         self.find_panels_recursive(root, 0.0, 0.0, prefix, &mut results);
         results

@@ -74,6 +74,15 @@ pub enum Content {
         color: [f32; 4],
         scale: f32,
     },
+    WrappedTextBox {
+        text: String,
+        color: [f32; 4],
+        scale: f32,
+        scroll_offset: usize,
+        line_gap: f32,
+        indicator_color: [f32; 4],
+        indicator_scale: f32,
+    },
 }
 
 /// Visual style properties for a panel (not layout - Taffy handles layout)

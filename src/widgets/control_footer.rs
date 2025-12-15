@@ -5,6 +5,8 @@ use crate::base::{panel, taffy, PanelBuilder};
 use taffy::prelude::*;
 
 use super::theme::GlTheme;
+use crate::base::view::footer_height;
+
 /// Build the control footer panel for Overview view
 pub fn build_overview_footer(
     selected_count: usize,
@@ -12,7 +14,7 @@ pub fn build_overview_footer(
     theme: &GlTheme,
 ) -> PanelBuilder {
     let gap = theme.panel_gap;
-    let footer_height = theme.font_size * 3.0; // Derived from font size
+    let footer_height = footer_height(theme); // Derived from font size
 
     panel()
         .width(percent(1.0))
@@ -63,6 +65,104 @@ pub fn build_overview_footer(
         )
 }
 
+/// Build the control footer panel for News view
+pub fn build_news_footer(loading: bool, theme: &GlTheme) -> PanelBuilder {
+    let gap = theme.panel_gap;
+    let footer_height = footer_height(theme); // Match other tabs
+
+    let refresh_text = if loading { "Loading..." } else { "Refresh" };
+
+    panel()
+        .width(percent(1.0))
+        .height(length(footer_height))
+        .flex_direction(FlexDirection::Row)
+        .gap(gap * 1.5)
+        .padding_all(theme.panel_padding)
+        .background(theme.background_panel)
+        .border_solid(1.0, theme.border)
+        .align_items(AlignItems::Center)
+        // Refresh
+        .child(
+            panel()
+                .flex_direction(FlexDirection::Row)
+                .gap(gap / 2.0)
+                .child(panel().text("[r]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text(refresh_text, theme.foreground, theme.font_normal)),
+        )
+        // Navigate headlines
+        .child(
+            panel()
+                .flex_direction(FlexDirection::Row)
+                .gap(gap / 2.0)
+                .child(panel().text("[j/k]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Select", theme.foreground, theme.font_normal)),
+        )
+        // Scroll content
+        .child(
+            panel()
+                .flex_direction(FlexDirection::Row)
+                .gap(gap / 2.0)
+                .child(panel().text("[PgUp/Dn]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Scroll", theme.foreground, theme.font_normal)),
+        )
+        // View switch
+        .child(
+            panel()
+                .flex_direction(FlexDirection::Row)
+                .gap(gap / 2.0)
+                .child(panel().text("[Tab]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("View", theme.foreground, theme.font_normal)),
+        )
+        // Quit
+        .child(
+            panel()
+                .flex_direction(FlexDirection::Row)
+                .gap(gap / 2.0)
+                .child(panel().text("[q]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Quit", theme.foreground, theme.font_normal)),
+        )
+}
+
+/// Build the control footer panel for Notifications view
+pub fn build_notifications_footer(theme: &GlTheme) -> PanelBuilder {
+    let gap = theme.panel_gap;
+    let footer_height = footer_height(theme); // Align with other tabs
+
+    panel()
+        .width(percent(1.0))
+        .height(length(footer_height))
+        .flex_direction(FlexDirection::Row)
+        .gap(gap * 2.0)
+        .padding_all(theme.panel_padding)
+        .background(theme.background_panel)
+        .border_solid(1.0, theme.border)
+        .align_items(AlignItems::Center)
+        // View switch
+        .child(
+            panel()
+                .flex_direction(FlexDirection::Row)
+                .gap(gap / 2.0)
+                .child(panel().text("[Tab]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Switch view", theme.foreground, theme.font_normal)),
+        )
+        // Toggle rule
+        .child(
+            panel()
+                .flex_direction(FlexDirection::Row)
+                .gap(gap / 2.0)
+                .child(panel().text("[Space]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Toggle rule", theme.foreground, theme.font_normal)),
+        )
+        // Scroll
+        .child(
+            panel()
+                .flex_direction(FlexDirection::Row)
+                .gap(gap / 2.0)
+                .child(panel().text("[j/k]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Navigate", theme.foreground, theme.font_normal)),
+        )
+}
+
 /// Build the control footer panel for Details view
 pub fn build_details_footer(
     time_window: TimeWindow,
@@ -71,7 +171,7 @@ pub fn build_details_footer(
     theme: &GlTheme,
 ) -> PanelBuilder {
     let gap = theme.panel_gap;
-    let footer_height = theme.font_size * 3.0; // Derived from font size
+    let footer_height = footer_height(theme); // Derived from font size
 
     let window_display = time_window.as_str();
     let chart_display = match chart_type {

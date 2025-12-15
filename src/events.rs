@@ -22,6 +22,12 @@ pub enum AppEvent {
     NotificationRuleUp,
     NotificationRuleDown,
     ToggleNotificationRule,
+    // News view events
+    NewsScrollUp,
+    NewsScrollDown,
+    ContentScrollUp,
+    ContentScrollDown,
+    RefreshNews,
     None,
 }
 
@@ -41,11 +47,13 @@ fn map_key_event(event: KeyEvent, view: View) -> AppEvent {
         KeyEvent::Up | KeyEvent::Char('k') => match view {
             View::Details => AppEvent::ZoomIn,
             View::Notifications => AppEvent::NotificationRuleUp,
+            View::News => AppEvent::NewsScrollUp,
             View::Overview => AppEvent::MoveUp,
         },
         KeyEvent::Down | KeyEvent::Char('j') => match view {
             View::Details => AppEvent::ZoomOut,
             View::Notifications => AppEvent::NotificationRuleDown,
+            View::News => AppEvent::NewsScrollDown,
             View::Overview => AppEvent::MoveDown,
         },
         KeyEvent::Left | KeyEvent::Char('h') => {
@@ -74,8 +82,25 @@ fn map_key_event(event: KeyEvent, view: View) -> AppEvent {
         KeyEvent::Tab | KeyEvent::Enter => AppEvent::SwitchView,
         KeyEvent::Char('w') => AppEvent::CycleWindow,
         KeyEvent::Char('c') => AppEvent::CycleChartType,
-        KeyEvent::Char('r') | KeyEvent::Home => AppEvent::ResetScroll,
+        KeyEvent::Char('r') => {
+            if view == View::News {
+                AppEvent::RefreshNews
+            } else {
+                AppEvent::ResetScroll
+            }
+        }
+        KeyEvent::Home => AppEvent::ResetScroll,
         KeyEvent::Char('m') => AppEvent::ToggleMute,
+
+        // Page Up/Down for content scrolling in News view
+        KeyEvent::PageUp => match view {
+            View::News => AppEvent::ContentScrollUp,
+            _ => AppEvent::None,
+        },
+        KeyEvent::PageDown => match view {
+            View::News => AppEvent::ContentScrollDown,
+            _ => AppEvent::None,
+        },
 
         _ => AppEvent::None,
     }
@@ -112,6 +137,12 @@ fn apply_action(app: &mut App, action: AppEvent) {
         AppEvent::NotificationRuleUp => app.select_prev_rule(),
         AppEvent::NotificationRuleDown => app.select_next_rule(),
         AppEvent::ToggleNotificationRule => app.toggle_notification_rule(),
+        // News view actions
+        AppEvent::NewsScrollUp => app.scroll_news_up(),
+        AppEvent::NewsScrollDown => app.scroll_news_down(),
+        AppEvent::ContentScrollUp => app.scroll_content_up(),
+        AppEvent::ContentScrollDown => app.scroll_content_down(),
+        AppEvent::RefreshNews => app.refresh_news(),
         AppEvent::None => {}
     }
 }
