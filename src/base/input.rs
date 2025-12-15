@@ -40,6 +40,7 @@ mod keycodes {
     pub const KEY_K: u16 = 37;
     pub const KEY_L: u16 = 38;
     pub const KEY_C: u16 = 46;
+    pub const KEY_M: u16 = 50;
     pub const KEY_SPACE: u16 = 57;
     pub const KEY_TAB: u16 = 15;
     pub const KEY_ENTER: u16 = 28;
@@ -227,6 +228,7 @@ impl KeyboardInput {
                 keycodes::KEY_K => Some(KeyEvent::Char('k')),
                 keycodes::KEY_L => Some(KeyEvent::Char('l')),
                 keycodes::KEY_C => Some(KeyEvent::Char('c')),
+                keycodes::KEY_M => Some(KeyEvent::Char('m')),
                 _ => None,
             };
 

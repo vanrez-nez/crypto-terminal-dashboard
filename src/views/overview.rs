@@ -51,6 +51,7 @@ pub fn build_overview_view(app: &App, theme: &GlTheme, width: f32, height: f32) 
             app.time_window,
             app.chart_type,
             app.connection_status,
+            app.notification_manager.unread_count,
             theme,
         ))
         // Coin table - grows to fill space, wrapped in titled panel

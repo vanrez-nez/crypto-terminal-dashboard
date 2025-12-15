@@ -3,7 +3,8 @@
     "allow": [
       "Bash(ssh vanrez@monode.local:*)",
       "Bash(cargo check:*)",
-      "Bash(scp:*)"
+      "Bash(scp:*)",
+      "WebFetch(domain:newsdata.io)"
     ]
   }
 }

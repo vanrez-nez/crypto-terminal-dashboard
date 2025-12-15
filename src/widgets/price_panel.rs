@@ -27,18 +27,17 @@ pub fn build_price_panel(coin: &CoinData, time_window: TimeWindow, theme: &GlThe
 
     let change_text = format_change(change_pct);
 
-    // Price color based on tick direction
-    let avg_change = coin.avg_change();
-    let price_color = price_change_color(coin.price, coin.prev_price, avg_change, theme);
-
-    // Arrow for price direction (always show placeholder for stable width)
+    // Arrow and price color based on tick direction
     let price_delta = coin.price - coin.prev_price;
-    let (arrow, arrow_color) = if price_delta > f64::EPSILON {
-        ("▲", price_color)
+    let avg_change = coin.avg_change();
+    let (arrow, price_color) = if price_delta > f64::EPSILON {
+        let color = price_change_color(coin.price, coin.prev_price, avg_change, theme);
+        ("▲", color)
     } else if price_delta < -f64::EPSILON {
-        ("▼", price_color)
+        let color = price_change_color(coin.price, coin.prev_price, avg_change, theme);
+        ("▼", color)
     } else {
-        (" ", theme.background) // Invisible placeholder
+        (" ", theme.foreground_muted) // Neutral: muted color, invisible arrow
     };
 
     let change_color = if change_pct > 0.0 {
@@ -73,7 +72,7 @@ pub fn build_price_panel(coin: &CoinData, time_window: TimeWindow, theme: &GlThe
                 .align_items(AlignItems::Center)
                 .gap(gap / 2.0)
                 .child(panel().text(&price_text, price_color, theme.font_big))
-                .child(panel().text(arrow, arrow_color, theme.font_medium)),
+                .child(panel().text(arrow, price_color, theme.font_medium)),
         )
         // Column 2: Change
         .child(

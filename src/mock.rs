@@ -2,7 +2,7 @@ use crate::api::Candle;
 use crate::widgets::indicators::CandleIndicators;
 use std::collections::VecDeque;
 
-const CHANGE_HISTORY_SIZE: usize = 50; // Number of samples to average
+const CHANGE_HISTORY_SIZE: usize = 120; // Number of samples to average
 
 pub struct CoinData {
     pub symbol: String,

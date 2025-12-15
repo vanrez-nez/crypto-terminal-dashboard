@@ -2,6 +2,20 @@
 
 use super::theme::{Color, GlTheme};
 
+/// Round price to match the display format precision.
+/// This ensures consistent change detection between UI display and audio tones.
+pub fn round_to_display(price: f64) -> f64 {
+    if price >= 1000.0 {
+        (price * 100.0).round() / 100.0 // 2 decimal places
+    } else if price >= 1.0 {
+        (price * 100.0).round() / 100.0 // 2 decimal places
+    } else if price >= 0.01 {
+        (price * 10000.0).round() / 10000.0 // 4 decimal places
+    } else {
+        (price * 1000000.0).round() / 1000000.0 // 6 decimal places
+    }
+}
+
 /// Format price with appropriate precision and commas
 pub fn format_price(price: f64) -> String {
     if price >= 1000.0 {
@@ -77,8 +91,12 @@ pub fn capitalize(s: &str) -> String {
 }
 
 /// Calculate color for price based on change compared to historical average
+/// Uses rounded prices to match display precision
 pub fn price_change_color(current: f64, previous: f64, avg_change: f64, theme: &GlTheme) -> Color {
-    let change = current - previous;
+    // Round to display precision so colors match visible price changes
+    let current_rounded = round_to_display(current);
+    let previous_rounded = round_to_display(previous);
+    let change = current_rounded - previous_rounded;
 
     if change == 0.0 {
         return theme.neutral;

@@ -99,6 +99,7 @@ pub fn build_details_view(
             app.time_window,
             app.chart_type,
             app.connection_status,
+            app.notification_manager.unread_count,
             theme,
         ))
         // Coin columns (horizontal layout)
@@ -111,7 +112,7 @@ pub fn build_details_view(
         )
         // Footer
         .child(
-            build_details_footer(app.time_window, app.chart_type, theme)
+            build_details_footer(app.time_window, app.chart_type, app.ticker_muted, theme)
                 .margin(spacing.footer_margin(), 0.0, 0.0, 0.0),
         );
 

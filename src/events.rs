@@ -17,6 +17,11 @@ pub enum AppEvent {
     CycleWindow,
     CycleChartType,
     ResetScroll,
+    ToggleMute,
+    // Notifications view events
+    NotificationRuleUp,
+    NotificationRuleDown,
+    ToggleNotificationRule,
     None,
 }
 
@@ -32,21 +37,17 @@ fn map_key_event(event: KeyEvent, view: View) -> AppEvent {
     match event {
         KeyEvent::Escape | KeyEvent::Char('q') => AppEvent::Quit,
 
-        // Navigation / Zoom (Up/Down = zoom in Details view, move in Overview)
-        KeyEvent::Up | KeyEvent::Char('k') => {
-            if view == View::Details {
-                AppEvent::ZoomIn
-            } else {
-                AppEvent::MoveUp
-            }
-        }
-        KeyEvent::Down | KeyEvent::Char('j') => {
-            if view == View::Details {
-                AppEvent::ZoomOut
-            } else {
-                AppEvent::MoveDown
-            }
-        }
+        // Navigation / Zoom (context-dependent on view)
+        KeyEvent::Up | KeyEvent::Char('k') => match view {
+            View::Details => AppEvent::ZoomIn,
+            View::Notifications => AppEvent::NotificationRuleUp,
+            View::Overview => AppEvent::MoveUp,
+        },
+        KeyEvent::Down | KeyEvent::Char('j') => match view {
+            View::Details => AppEvent::ZoomOut,
+            View::Notifications => AppEvent::NotificationRuleDown,
+            View::Overview => AppEvent::MoveDown,
+        },
         KeyEvent::Left | KeyEvent::Char('h') => {
             if view == View::Details {
                 AppEvent::MoveLeft
@@ -63,11 +64,18 @@ fn map_key_event(event: KeyEvent, view: View) -> AppEvent {
         }
 
         // Actions
-        KeyEvent::Space => AppEvent::Select,
+        KeyEvent::Space => {
+            if view == View::Notifications {
+                AppEvent::ToggleNotificationRule
+            } else {
+                AppEvent::Select
+            }
+        }
         KeyEvent::Tab | KeyEvent::Enter => AppEvent::SwitchView,
         KeyEvent::Char('w') => AppEvent::CycleWindow,
         KeyEvent::Char('c') => AppEvent::CycleChartType,
         KeyEvent::Char('r') | KeyEvent::Home => AppEvent::ResetScroll,
+        KeyEvent::Char('m') => AppEvent::ToggleMute,
 
         _ => AppEvent::None,
     }
@@ -99,6 +107,11 @@ fn apply_action(app: &mut App, action: AppEvent) {
         AppEvent::CycleWindow => app.cycle_window(),
         AppEvent::CycleChartType => app.cycle_chart_type(),
         AppEvent::ResetScroll => app.reset_candle_scroll(),
+        AppEvent::ToggleMute => app.toggle_mute(),
+        // Notifications view actions
+        AppEvent::NotificationRuleUp => app.select_prev_rule(),
+        AppEvent::NotificationRuleDown => app.select_next_rule(),
+        AppEvent::ToggleNotificationRule => app.toggle_notification_rule(),
         AppEvent::None => {}
     }
 }

@@ -1,10 +1,12 @@
 use crate::api::PriceUpdate;
 use crate::mock::CoinData;
+use crate::notifications::NotificationManager;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum View {
     Overview,
     Details,
+    Notifications,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -76,10 +78,24 @@ pub struct App {
     pub candle_scroll_offset: isize,
     /// Number of visible candles (zoom level)
     pub visible_candles: usize,
+    /// Notification manager
+    pub notification_manager: NotificationManager,
+    /// Scroll offset for notifications view
+    pub notification_scroll: usize,
+    /// Whether ticker tones are muted
+    pub ticker_muted: bool,
 }
 
 impl App {
     pub fn new(coins: Vec<CoinData>, provider: &str) -> Self {
+        Self::with_notification_manager(coins, provider, NotificationManager::default())
+    }
+
+    pub fn with_notification_manager(
+        coins: Vec<CoinData>,
+        provider: &str,
+        notification_manager: NotificationManager,
+    ) -> Self {
         let coin_count = coins.len();
         let use_mock = provider == "mock";
         Self {
@@ -99,7 +115,15 @@ impl App {
             chart_type: ChartType::Candlestick,
             candle_scroll_offset: 0,
             visible_candles: 50, // Default zoom level
+            notification_manager,
+            notification_scroll: 0,
+            ticker_muted: false,
         }
+    }
+
+    /// Toggle ticker tone mute state
+    pub fn toggle_mute(&mut self) {
+        self.ticker_muted = !self.ticker_muted;
     }
 
     /// Cycle between Polygonal and Candlestick chart types
@@ -178,10 +202,49 @@ impl App {
     }
 
     pub fn switch_view(&mut self) {
+        // Mark notifications as read when leaving Notifications view
+        if self.view == View::Notifications {
+            self.notification_manager.mark_all_read();
+        }
         self.view = match self.view {
             View::Overview => View::Details,
-            View::Details => View::Overview,
+            View::Details => View::Notifications,
+            View::Notifications => View::Overview,
         };
+    }
+
+    /// Scroll notifications list up
+    pub fn scroll_notifications_up(&mut self) {
+        if self.notification_scroll > 0 {
+            self.notification_scroll -= 1;
+        }
+    }
+
+    /// Scroll notifications list down
+    pub fn scroll_notifications_down(&mut self) {
+        let max_scroll = self
+            .notification_manager
+            .notifications
+            .len()
+            .saturating_sub(10);
+        if self.notification_scroll < max_scroll {
+            self.notification_scroll += 1;
+        }
+    }
+
+    /// Toggle the currently selected notification rule
+    pub fn toggle_notification_rule(&mut self) {
+        self.notification_manager.toggle_selected_rule();
+    }
+
+    /// Move notification rule selection up
+    pub fn select_prev_rule(&mut self) {
+        self.notification_manager.select_prev();
+    }
+
+    /// Move notification rule selection down
+    pub fn select_next_rule(&mut self) {
+        self.notification_manager.select_next();
     }
 
     pub fn selected_count(&self) -> usize {

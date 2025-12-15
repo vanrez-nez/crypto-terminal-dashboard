@@ -67,6 +67,7 @@ pub fn build_overview_footer(
 pub fn build_details_footer(
     time_window: TimeWindow,
     chart_type: ChartType,
+    ticker_muted: bool,
     theme: &GlTheme,
 ) -> PanelBuilder {
     let gap = theme.panel_gap;
@@ -76,6 +77,12 @@ pub fn build_details_footer(
     let chart_display = match chart_type {
         ChartType::Polygonal => "Poly",
         ChartType::Candlestick => "Candle",
+    };
+    let mute_display = if ticker_muted { "Muted" } else { "On" };
+    let mute_color = if ticker_muted {
+        theme.foreground_muted
+    } else {
+        theme.accent
     };
 
     panel()
@@ -103,14 +110,6 @@ pub fn build_details_footer(
                 .child(panel().text("[▲▼]", theme.accent_secondary, theme.font_normal))
                 .child(panel().text("Zoom", theme.foreground, theme.font_normal)),
         )
-        // Reset scroll
-        .child(
-            panel()
-                .flex_direction(FlexDirection::Row)
-                .gap(gap / 2.0)
-                .child(panel().text("[Home/r]", theme.accent_secondary, theme.font_normal))
-                .child(panel().text("Reset", theme.foreground, theme.font_normal)),
-        )
         // Window change with current value
         .child(
             panel()
@@ -128,5 +127,14 @@ pub fn build_details_footer(
                 .child(panel().text("[c]", theme.accent_secondary, theme.font_normal))
                 .child(panel().text("Chart:", theme.foreground_muted, theme.font_normal))
                 .child(panel().text(chart_display, theme.accent, theme.font_normal)),
+        )
+        // Mute toggle with current state
+        .child(
+            panel()
+                .flex_direction(FlexDirection::Row)
+                .gap(gap / 2.0)
+                .child(panel().text("[m]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Sound:", theme.foreground_muted, theme.font_normal))
+                .child(panel().text(mute_display, mute_color, theme.font_normal)),
         )
 }

@@ -4,6 +4,7 @@ mod base;
 mod config;
 mod events;
 mod mock;
+mod notifications;
 mod views;
 mod widgets;
 
@@ -21,6 +22,7 @@ use app::{App, ChartType};
 use config::Config;
 use events::handle_gl_events;
 use mock::{coins_from_pairs, generate_mock_coins};
+use notifications::{audio, persistence, NotificationManager};
 use views::CHART_PANEL_PREFIX;
 use widgets::candlestick_chart::render_candlestick_chart;
 use widgets::polygonal_chart::render_polygonal_chart;
@@ -76,7 +78,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         generate_mock_coins()
     };
 
-    let mut app = App::new(coins, provider);
+    // Initialize notification manager from config
+    let notif_config = config.notifications_config();
+    let mut notification_manager = NotificationManager::new(
+        notif_config.rules.clone(),
+        notif_config.cooldown_secs,
+        notif_config.max_log_entries,
+    );
+
+    // Load existing notifications from log file
+    let existing_notifications = persistence::load_notifications(&notif_config.log_file);
+    notification_manager.load_notifications(existing_notifications);
+
+    // Initialize audio if enabled
+    if notif_config.audio_enabled {
+        audio::init_audio();
+    }
+
+    let mut app = App::with_notification_manager(coins, provider, notification_manager);
 
     // Spawn WebSocket task if using live data
     if use_live {
@@ -131,6 +150,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut scissor_stack,
         &focus_manager,
         &gl_theme,
+        &config,
     )?;
 
     Ok(())
@@ -151,8 +171,13 @@ fn run_gl_loop(
     scissor_stack: &mut ScissorStack,
     focus_manager: &FocusManager,
     theme: &GlTheme,
+    config: &Config,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let (width, height) = (display.width, display.height);
+    let notifications_enabled = config.notifications_enabled();
+    let audio_enabled = config.audio_enabled();
+    let log_file = config.log_file();
+    let ticker_tones_config = config.ticker_tones_config();
 
     while app.running {
         // 1. Poll tokio tasks (non-blocking)
@@ -172,15 +197,35 @@ fn run_gl_loop(
             app.handle_update(update);
         }
 
-        // 4. Handle keyboard input (evdev-based)
+        // 3.5. Play ticker tones for price changes (checked coins only, if not muted)
+        if ticker_tones_config.enabled && !app.ticker_muted {
+            notifications::process_ticker_tones(&app.coins, &app.checked, &ticker_tones_config);
+        }
+
+        // 4. Check notification rules after price updates (checked coins only)
+        if notifications_enabled {
+            let new_notifications = app.notification_manager.check_rules(&app.coins, &app.checked);
+            if !new_notifications.is_empty() {
+                // Play audio for each new notification
+                if audio_enabled {
+                    for notif in &new_notifications {
+                        audio::play_alert(notif.sound.as_deref());
+                    }
+                }
+                // Save updated notifications to log file
+                persistence::save_notifications(&app.notification_manager.notifications, &log_file);
+            }
+        }
+
+        // 5. Handle keyboard input (evdev-based)
         handle_gl_events(keyboard, app);
 
-        // 5. Build layout tree
+        // 6. Build layout tree
         let mut tree = LayoutTree::new();
         let view_result = build_current_view(&mut tree, app, theme, width as f32, height as f32);
         tree.compute_with_text(view_result.root, width as f32, height as f32, atlas);
 
-        // 6. Clear screen
+        // 7. Clear screen
         unsafe {
             display.gl.clear_color(
                 theme.background[0],
@@ -191,7 +236,7 @@ fn run_gl_loop(
             display.gl.clear(glow::COLOR_BUFFER_BIT);
         }
 
-        // 7. Render layout tree
+        // 8. Render layout tree
         render(
             &display.gl,
             &tree,
@@ -205,7 +250,7 @@ fn run_gl_loop(
             height,
         );
 
-        // 8. Chart rendering
+        // 9. Chart rendering
         if !view_result.chart_areas.is_empty() {
             // Find chart panel bounds from layout
             let chart_bounds = tree.find_panels_by_prefix(view_result.root, CHART_PANEL_PREFIX);
@@ -260,7 +305,7 @@ fn run_gl_loop(
             }
         }
 
-        // 9. Swap buffers (vsync)
+        // 10. Swap buffers (vsync)
         display.swap_buffers()?;
     }
 
@@ -281,7 +326,7 @@ fn build_current_view(
     height: f32,
 ) -> ViewResult {
     use crate::app::View;
-    use crate::views::{build_details_view, build_overview_view};
+    use crate::views::{build_details_view, build_notifications_view, build_overview_view};
 
     match app.view {
         View::Overview => ViewResult {
@@ -295,5 +340,9 @@ fn build_current_view(
                 chart_areas,
             }
         }
+        View::Notifications => ViewResult {
+            root: build_notifications_view(app, theme, width, height).build(tree),
+            chart_areas: vec![],
+        },
     }
 }

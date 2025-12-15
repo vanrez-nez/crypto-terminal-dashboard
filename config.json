@@ -8,5 +8,84 @@
     "ema_periods": [7, 25, 99],
     "rsi_periods": [6, 12, 24],
     "default_window": "1h"
+  },
+  "notifications": {
+    "enabled": true,
+    "audio_enabled": true,
+    "cooldown_secs": 60,
+    "log_file": "notifications.json",
+    "max_log_entries": 100,
+    "ticker_tones": {
+      "enabled": true,
+      "base_freq_up": 2400,
+      "base_freq_down": 700,
+      "max_freq": 3500,
+      "min_freq": 200,
+      "duration_ms": 6
+    },
+    "rules": [
+      {
+        "type": "rsi",
+        "period": 6,
+        "threshold": 30,
+        "direction": "below",
+        "enabled": true,
+        "sound": "default.wav"
+      },
+      {
+        "type": "rsi",
+        "period": 6,
+        "threshold": 70,
+        "direction": "above",
+        "enabled": true,
+        "sound": "default.wav"
+      },
+      {
+        "type": "rsi",
+        "period": 12,
+        "threshold": 25,
+        "direction": "below",
+        "enabled": true,
+        "sound": "default.wav"
+      },
+      {
+        "type": "rsi",
+        "period": 12,
+        "threshold": 75,
+        "direction": "above",
+        "enabled": true,
+        "sound": "default.wav"
+      },
+      {
+        "type": "ema_cross",
+        "period": 7,
+        "direction": "cross_above",
+        "enabled": true,
+        "sound": "default.wav"
+      },
+      {
+        "type": "ema_cross",
+        "period": 7,
+        "direction": "cross_below",
+        "enabled": true,
+        "sound": "default.wav"
+      },
+      {
+        "type": "price_level",
+        "symbol": "BTC",
+        "price": 100000,
+        "direction": "above",
+        "enabled": true,
+        "sound": "default.wav"
+      },
+      {
+        "type": "price_level",
+        "symbol": "BTC",
+        "price": 90000,
+        "direction": "below",
+        "enabled": true,
+        "sound": "default.wav"
+      }
+    ]
   }
 }
