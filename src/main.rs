@@ -5,6 +5,7 @@ mod config;
 mod events;
 mod mock;
 mod notifications;
+mod news_cache;
 mod views;
 mod widgets;
 
@@ -24,6 +25,7 @@ use config::Config;
 use events::handle_gl_events;
 use mock::{coins_from_pairs, generate_mock_coins};
 use notifications::{audio, persistence, NotificationManager};
+use news_cache::NewsCache;
 use views::CHART_PANEL_PREFIX;
 use widgets::candlestick_chart::render_candlestick_chart;
 use widgets::chart_renderer::{ChartRenderer, PixelRect};
@@ -51,6 +53,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let gl_theme = match config.theme_config() {
         Some(theme_config) => GlTheme::from_config(&theme_config),
         None => GlTheme::default(),
+    };
+
+    // News cache (SQLite)
+    let mut news_cache = match NewsCache::open("news_cache.db") {
+        Ok(cache) => Some(cache),
+        Err(e) => {
+            eprintln!("News cache disabled: {}", e);
+            None
+        }
     };
 
     // Initialize DRM/GBM/EGL display
@@ -104,6 +115,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut app = App::with_notification_manager(coins, provider, notification_manager);
+
+    // Load cached news articles (if available)
+    if let Some(cache) = news_cache.as_ref() {
+        if let Ok(cached) = cache.load_latest(200) {
+            if !cached.is_empty() {
+                app.set_news(cached);
+            }
+        }
+    }
 
     // Spawn WebSocket task if using live data
     if use_live {
@@ -159,6 +179,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         candle_req_tx,
         news_req_tx,
         &mut news_rx,
+        &mut news_cache,
         &rt,
         &pairs,
         &atlas,
@@ -182,6 +203,7 @@ fn run_gl_loop(
     candle_req_tx: mpsc::Sender<(String, u32)>,
     news_req_tx: mpsc::Sender<Vec<String>>,
     news_rx: &mut mpsc::Receiver<Vec<NewsArticle>>,
+    news_cache: &mut Option<NewsCache>,
     rt: &tokio::runtime::Runtime,
     pairs: &[String],
     atlas: &FontAtlas,
@@ -222,7 +244,21 @@ fn run_gl_loop(
 
         // 2.6. Process news updates (non-blocking)
         if let Ok(articles) = news_rx.try_recv() {
-            app.set_news(articles);
+            if let Some(cache) = news_cache.as_mut() {
+                match cache.save_articles(&articles) {
+                    Ok(merged) => app.set_news(merged),
+                    Err(e) => {
+                        eprintln!("Failed to cache news: {}", e);
+                        let mut fallback = articles;
+                        fallback.truncate(200);
+                        app.set_news(fallback);
+                    }
+                }
+            } else {
+                let mut fallback = articles;
+                fallback.truncate(200);
+                app.set_news(fallback);
+            }
         }
 
         // 3. Process price updates (non-blocking)

@@ -13,6 +13,7 @@ pub struct NewsArticle {
     pub title: String,
     pub source: String,
     pub published_at: i64, // Unix timestamp
+    pub link: Option<String>,
     pub description: String,
 }
 
@@ -28,6 +29,7 @@ struct NewsDataArticle {
     source_name: Option<String>,
     #[serde(rename = "pubDate")]
     pub_date: Option<String>,
+    link: Option<String>,
     description: Option<String>,
 }
 
@@ -46,7 +48,11 @@ pub async fn fetch_newsdata_news(coins: &[String]) -> anyhow::Result<Vec<NewsArt
             .join(",")
     };
 
-    let url = format!("{}?apikey={}&coin={}", NEWSDATA_URL, api_key, coin_param);
+    // Restrict to English results to avoid mixed-language content.
+    let url = format!(
+        "{}?apikey={}&coin={}&language=en",
+        NEWSDATA_URL, api_key, coin_param
+    );
 
     let resp = reqwest::get(&url).await?;
     let data: NewsDataResponse = resp.json().await?;
@@ -56,8 +62,9 @@ pub async fn fetch_newsdata_news(coins: &[String]) -> anyhow::Result<Vec<NewsArt
         .unwrap_or_default()
         .into_iter()
         .filter_map(|a| {
-            let title = a.title?;
-            let source = a.source_name.unwrap_or_else(|| "Unknown".to_string());
+            let title = sanitize_ascii(a.title?);
+            let source = sanitize_ascii(a.source_name.unwrap_or_else(|| "Unknown".to_string()));
+            let link = a.link.map(sanitize_ascii);
             let published_at = a
                 .pub_date
                 .and_then(|d| parse_newsdata_datetime(&d))
@@ -67,7 +74,8 @@ pub async fn fetch_newsdata_news(coins: &[String]) -> anyhow::Result<Vec<NewsArt
                 title,
                 source,
                 published_at,
-                description: a.description.unwrap_or_default(),
+                link,
+                description: sanitize_ascii(a.description.unwrap_or_default()),
             })
         })
         .collect();
@@ -136,6 +144,19 @@ fn days_before_month(month: u32) -> i64 {
         12 => 334,
         _ => 0,
     }
+}
+
+fn sanitize_ascii(input: String) -> String {
+    input
+        .chars()
+        .map(|c| {
+            if c.is_ascii() && !c.is_control() {
+                c
+            } else {
+                '?'
+            }
+        })
+        .collect()
 }
 
 /// Format a timestamp as relative time (e.g., "5 min ago")

@@ -231,11 +231,6 @@ impl App {
             View::News => View::Overview,
         };
 
-        // Trigger news refresh when entering News view
-        if next_view == View::News && self.news_articles.is_empty() {
-            self.needs_news_refresh = true;
-        }
-
         self.view = next_view;
     }
 
