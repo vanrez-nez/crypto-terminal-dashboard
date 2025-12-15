@@ -1,0 +1,44 @@
+{
+  "colors": {
+    "background": "#2e3440",
+    "background.panel": "#3b4252",
+    "border": "#4c566a",
+    "border.focus": "#88c0d0",
+
+    "foreground": "#eceff4",
+    "foreground.muted": "#d8dee9",
+    "foreground.inactive": "#4c566a",
+
+    "accent": "#88c0d0",
+    "accent.secondary": "#ebcb8b",
+
+    "positive": "#a3be8c",
+    "negative": "#bf616a",
+    "neutral": "#ebcb8b",
+
+    "selection.background": "#434c5e",
+
+    "status.live": "#a3be8c",
+    "status.connecting": "#ebcb8b",
+    "status.disconnected": "#bf616a",
+    "status.mock": "#b48ead",
+
+    "candle.bullish": "#a3be8c",
+    "candle.bearish": "#bf616a",
+
+    "indicator.primary": "#d08770",
+    "indicator.secondary": "#b48ead",
+    "indicator.tertiary": "#5e81ac",
+
+    "poly.fill.top": "#81a1c1",
+    "poly.fill.bottom": "#2e3440",
+    "poly.line": "#ebcb8b",
+
+    "price.up.high": "#a3be8c",
+    "price.up.mid": "#8faa7a",
+    "price.up.low": "#6b8a5c",
+    "price.down.high": "#bf616a",
+    "price.down.mid": "#a85259",
+    "price.down.low": "#8a4248"
+  }
+}

@@ -1,4 +1,5 @@
 use crate::api::Candle;
+use crate::widgets::indicators::CandleIndicators;
 use std::collections::VecDeque;
 
 const CHANGE_HISTORY_SIZE: usize = 50; // Number of samples to average
@@ -18,6 +19,8 @@ pub struct CoinData {
     pub indicators: IndicatorData,
     pub sparkline: Vec<u64>,
     pub candles: Vec<Candle>,
+    /// Cached per-candle indicators for chart rendering (RSI/EMA arrays)
+    pub chart_indicators: CandleIndicators,
 }
 
 pub struct IndicatorData {
@@ -67,6 +70,7 @@ impl CoinData {
             indicators: IndicatorData::default(),
             sparkline: vec![50; 20],
             candles: Vec::new(),
+            chart_indicators: CandleIndicators::default(),
         }
     }
 
@@ -190,6 +194,9 @@ impl CoinData {
         self.indicators.macd_signal = self.indicators.macd_signal * (1.0 - macd_smoothing)
             + self.indicators.macd_line * macd_smoothing;
         self.indicators.macd_histogram = self.indicators.macd_line - self.indicators.macd_signal;
+
+        // Update per-candle chart indicators (cached for rendering)
+        self.chart_indicators = CandleIndicators::from_candles(&self.candles, 14);
     }
 
     fn update_sparkline(&mut self) {
@@ -323,6 +330,7 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
                 65, 66, 64, 67, 68, 70, 69, 71, 72, 70, 68, 69, 71, 73, 72, 70, 68, 69, 70, 72,
             ],
             candles: Vec::new(),
+            chart_indicators: CandleIndicators::default(),
         },
         CoinData {
             symbol: "ETH".to_string(),
@@ -350,6 +358,7 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
                 72, 70, 68, 66, 65, 64, 62, 63, 65, 67, 69, 71, 73, 72, 70, 68, 66, 64, 65, 67,
             ],
             candles: Vec::new(),
+            chart_indicators: CandleIndicators::default(),
         },
         CoinData {
             symbol: "SOL".to_string(),
@@ -377,6 +386,7 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
                 55, 58, 60, 63, 65, 68, 70, 72, 75, 73, 71, 74, 76, 78, 80, 82, 80, 78, 76, 75,
             ],
             candles: Vec::new(),
+            chart_indicators: CandleIndicators::default(),
         },
         CoinData {
             symbol: "XRP".to_string(),
@@ -404,6 +414,7 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
                 50, 51, 52, 51, 50, 49, 50, 51, 52, 53, 52, 51, 50, 51, 52, 53, 54, 53, 52, 51,
             ],
             candles: Vec::new(),
+            chart_indicators: CandleIndicators::default(),
         },
         CoinData {
             symbol: "ADA".to_string(),
@@ -431,6 +442,7 @@ pub fn generate_mock_coins() -> Vec<CoinData> {
                 46, 45, 44, 45, 46, 45, 44, 43, 44, 45, 46, 45, 44, 45, 46, 47, 46, 45, 44, 45,
             ],
             candles: Vec::new(),
+            chart_indicators: CandleIndicators::default(),
         },
     ]
 }

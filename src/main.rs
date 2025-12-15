@@ -41,9 +41,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::load("config.json");
     let pairs = config.pairs();
 
-    // Create GlTheme from config
-    let gl_theme = match &config.theme {
-        Some(theme_config) => GlTheme::from_config(theme_config),
+    // Create GlTheme from config (loads theme by name)
+    let gl_theme = match config.theme_config() {
+        Some(theme_config) => GlTheme::from_config(&theme_config),
         None => GlTheme::default(),
     };
 
@@ -233,6 +233,7 @@ fn run_gl_loop(
                             ChartType::Candlestick => render_candlestick_chart(
                                 chart_renderer,
                                 &coin.candles,
+                                &coin.chart_indicators, // Use cached indicators
                                 app.candle_scroll_offset,
                                 app.visible_candles,
                                 0.05, // 5% price margin

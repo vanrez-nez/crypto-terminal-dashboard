@@ -14,6 +14,17 @@ pub struct CandleIndicators {
     pub ema_99: Vec<f64>,
 }
 
+impl Default for CandleIndicators {
+    fn default() -> Self {
+        Self {
+            rsi: Vec::new(),
+            ema_7: Vec::new(),
+            ema_25: Vec::new(),
+            ema_99: Vec::new(),
+        }
+    }
+}
+
 impl CandleIndicators {
     /// Compute all indicators from a slice of candles
     pub fn from_candles(candles: &[Candle], rsi_period: usize) -> Self {

@@ -11,9 +11,11 @@ use crate::widgets::indicators::CandleIndicators;
 use crate::widgets::theme::GlTheme;
 
 /// Render a complete candlestick chart with overlays
+/// Uses pre-calculated indicators from CoinData to avoid per-frame recalculation
 pub fn render_candlestick_chart(
     renderer: &mut ChartRenderer,
     candles: &[Candle],
+    indicators: &CandleIndicators,
     scroll_offset: isize,
     visible_candles: usize,
     price_margin: f64,
@@ -57,10 +59,7 @@ pub fn render_candlestick_chart(
         theme,
     );
 
-    // 7. Calculate indicators for overlay
-    let indicators = CandleIndicators::from_candles(candles, 14);
-
-    // 8. Draw EMA lines
+    // 7. Draw EMA lines (using cached indicators)
     render_ema_lines(
         renderer,
         &indicators,
@@ -72,7 +71,7 @@ pub fn render_candlestick_chart(
         theme,
     );
 
-    // 9. Draw candlesticks
+    // 8. Draw candlesticks
     render_candles(
         renderer,
         visible_slice,
@@ -84,7 +83,7 @@ pub fn render_candlestick_chart(
         theme,
     );
 
-    // 10. Draw RSI overlay
+    // 9. Draw RSI overlay
     render_rsi_overlay(
         renderer,
         &indicators.rsi,

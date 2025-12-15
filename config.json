@@ -1,32 +1,5 @@
 {
-  "theme": {
-    "colors": {
-      "foreground": "#c0c0c0",
-      "foreground.muted": "#808080",
-      "foreground.inactive": "#808080",
-      "accent": "#00ffff",
-      "accent.secondary": "#ffff00",
-      "positive": "#00ff00",
-      "negative": "#ff0000",
-      "neutral": "#ffff00",
-      "selection.background": "#000080",
-      "status.live": "#00ff00",
-      "status.connecting": "#ffff00",
-      "status.disconnected": "#ff0000",
-      "status.mock": "#ff00ff",
-      "candle.bullish": "#008000",
-      "candle.bearish": "#800000",
-      "indicator.primary": "#808000",
-      "indicator.secondary": "#800080",
-      "indicator.tertiary": "#008080",
-      "price.up.high": "#00ff00",
-      "price.up.mid": "#008000",
-      "price.up.low": "#008000",
-      "price.down.high": "#ff0000",
-      "price.down.mid": "#800000",
-      "price.down.low": "#800000"
-    }
-  },
+  "theme": "binance",
   "api": {
     "provider": "binance"
   },
