@@ -244,57 +244,27 @@ pub fn build_positions_footer(margin_level: Option<f64>, theme: &GlTheme) -> Pan
     let gap = theme.panel_gap;
     let footer_height = footer_height(theme);
 
-    // Format margin level with color coding
-    let (margin_text, margin_color) = if let Some(level) = margin_level {
-        let color = if level > 2.0 {
-            theme.positive
-        } else if level > 1.5 {
-            theme.neutral
-        } else {
-            theme.negative
-        };
-        (format!("Margin: {:.2}", level), color)
-    } else {
-        ("Margin: N/A".to_string(), theme.accent_secondary)
-    };
-
     panel()
         .width(percent(1.0))
         .height(length(footer_height))
         .flex_direction(FlexDirection::Row)
-        .justify_content(JustifyContent::SpaceBetween)
         .align_items(AlignItems::Center)
-        .gap(gap * 2.0)
+        .gap(gap * 1.5)
         .padding_all(theme.panel_padding)
         .background(theme.background_panel)
         .border_solid(1.0, theme.border)
-        // Left side - controls
         .child(
             panel()
                 .flex_direction(FlexDirection::Row)
-                .gap(gap * 1.5)
-                .child(
-                    panel()
-                        .flex_direction(FlexDirection::Row)
-                        .gap(gap / 2.0)
-                        .child(panel().text("[r]", theme.accent_secondary, theme.font_normal))
-                        .child(panel().text("Refresh", theme.foreground, theme.font_normal)),
-                )
-                .child(
-                    panel()
-                        .flex_direction(FlexDirection::Row)
-                        .gap(gap / 2.0)
-                        .child(panel().text("[▲▼]", theme.accent_secondary, theme.font_normal))
-                        .child(panel().text("Select", theme.foreground, theme.font_normal)),
-                )
-                .child(
-                    panel()
-                        .flex_direction(FlexDirection::Row)
-                        .gap(gap / 2.0)
-                        .child(panel().text("[Tab]", theme.accent_secondary, theme.font_normal))
-                        .child(panel().text("View", theme.foreground, theme.font_normal)),
-                ),
+                .gap(gap / 2.0)
+                .child(panel().text("[r]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Refresh", theme.foreground, theme.font_normal)),
         )
-        // Right side - margin level indicator
-        .child(panel().text(&margin_text, margin_color, theme.font_normal))
+        .child(
+            panel()
+                .flex_direction(FlexDirection::Row)
+                .gap(gap / 2.0)
+                .child(panel().text("[▲▼]", theme.accent_secondary, theme.font_normal))
+                .child(panel().text("Select", theme.foreground, theme.font_normal)),
+        )
 }

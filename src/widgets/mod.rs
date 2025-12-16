@@ -14,6 +14,7 @@ pub mod polygonal_chart;
 pub mod positions_table;
 pub mod price_panel;
 pub mod status_header;
+pub mod table;
 pub mod text_box;
 pub mod theme;
 pub mod titled_panel;

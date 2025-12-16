@@ -7,8 +7,9 @@ use crate::api::margin::MarginAccount;
 use crate::app::App;
 use crate::base::view::ViewSpacing;
 use crate::widgets::{
-    control_footer::build_positions_footer, positions_table::build_positions_table,
-    status_header::build_status_header, theme::GlTheme, titled_panel::titled_panel,
+    control_footer::build_positions_footer, format::format_price,
+    positions_table::build_positions_table, status_header::build_status_header,
+    theme::GlTheme, titled_panel::titled_panel,
 };
 
 pub fn build_positions_view(
@@ -141,7 +142,7 @@ fn build_account_summary(account: &MarginAccount, theme: &GlTheme) -> PanelBuild
                         panel().text("Total Assets", theme.accent_secondary, theme.font_small),
                     )
                     .child(panel().text(
-                        &format!("${:.2}", account.total_asset_usd),
+                        &format_price(account.total_asset_usd),
                         theme.foreground,
                         theme.font_big,
                     )),
@@ -158,7 +159,7 @@ fn build_account_summary(account: &MarginAccount, theme: &GlTheme) -> PanelBuild
                         ),
                     )
                     .child(panel().text(
-                        &format!("${:.2}", account.total_liability_usd),
+                        &format_price(account.total_liability_usd),
                         theme.negative,
                         theme.font_big,
                     )),
@@ -175,7 +176,7 @@ fn build_account_summary(account: &MarginAccount, theme: &GlTheme) -> PanelBuild
                         ),
                     )
                     .child(panel().text(
-                        &format!("${:.2}", account.total_net_usd),
+                        &format_price(account.total_net_usd),
                         net_color,
                         theme.font_big,
                     )),
