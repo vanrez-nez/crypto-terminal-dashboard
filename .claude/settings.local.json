@@ -4,7 +4,8 @@
       "Bash(ssh vanrez@monode.local:*)",
       "Bash(cargo check:*)",
       "Bash(scp:*)",
-      "WebFetch(domain:newsdata.io)"
+      "WebFetch(domain:newsdata.io)",
+      "Bash(docker run:*)"
     ]
   }
 }

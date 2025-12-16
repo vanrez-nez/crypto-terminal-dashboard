@@ -21,6 +21,7 @@ pub fn build_news_view(app: &App, theme: &GlTheme, width: f32, height: f32) -> P
     let spacing = ViewSpacing::new(theme);
     let metrics = ViewMetrics::new(width, height, &spacing, theme);
 
+
     panel()
         .width(length(width))
         .height(length(height))
@@ -47,7 +48,6 @@ pub fn build_news_view(app: &App, theme: &GlTheme, width: f32, height: f32) -> P
                 metrics.content_height,
                 &spacing,
             )
-            .flex_grow(1.0),
         )
         // Footer - fixed height with extra top margin
         .child(build_news_footer(app.news_loading, theme).margin(
@@ -67,6 +67,7 @@ fn build_news_content(
     spacing: &ViewSpacing,
 ) -> PanelBuilder {
     let gap = spacing.section_gap;
+
 
     // Check if API key is configured
     if !has_api_keys() {
@@ -118,11 +119,13 @@ fn build_news_content(
     }
 
     // Split layout: headlines (30%) and content (70%)
-    let headlines_height = (available_height * 0.30).max(80.0);
-    let content_height = (available_height * 0.70).max(160.0);
+    // Account for the gap between panels
+    let available_for_content = available_height - gap;
+    let headlines_height = (available_for_content * 0.30).max(80.0);
+    let content_height = (available_for_content * 0.70).max(160.0);
+
 
     panel()
-        .flex_grow(1.0)
         .flex_direction(FlexDirection::Column)
         .gap(gap)
         // Headlines panel (30%)
