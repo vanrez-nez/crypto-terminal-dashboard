@@ -1,5 +1,6 @@
 pub mod binance;
 pub mod coinbase;
+pub mod margin;
 pub mod news;
 
 /// OHLC candle data
@@ -38,4 +39,8 @@ pub enum PriceUpdate {
     /// Error message
     #[allow(dead_code)]
     Error(String),
+    /// Margin account positions update
+    MarginPositions {
+        account: margin::MarginAccount,
+    },
 }

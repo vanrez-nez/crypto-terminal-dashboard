@@ -1,3 +1,4 @@
+use crate::api::margin::MarginAccount;
 use crate::api::news::NewsArticle;
 use crate::api::PriceUpdate;
 use crate::mock::CoinData;
@@ -9,6 +10,7 @@ pub enum View {
     Details,
     Notifications,
     News,
+    Positions,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -96,6 +98,18 @@ pub struct App {
     pub news_loading: bool,
     /// Flag to trigger news refresh
     pub needs_news_refresh: bool,
+    /// Margin account data
+    pub margin_account: Option<MarginAccount>,
+    /// Selected position index for navigation
+    pub positions_selected: usize,
+    /// Scroll offset for positions table
+    pub positions_scroll: usize,
+    /// Flag to trigger positions refresh
+    pub needs_positions_refresh: bool,
+    /// Whether positions are currently loading
+    pub positions_loading: bool,
+    /// Whether positions API is available (API keys configured)
+    pub positions_available: bool,
 }
 
 impl App {
@@ -135,7 +149,18 @@ impl App {
             news_content_scroll: 0,
             news_loading: false,
             needs_news_refresh: false,
+            margin_account: None,
+            positions_selected: 0,
+            positions_scroll: 0,
+            needs_positions_refresh: false,
+            positions_loading: false,
+            positions_available: false,
         }
+    }
+
+    /// Enable positions feature (call when API keys are available)
+    pub fn enable_positions(&mut self) {
+        self.positions_available = true;
     }
 
     /// Toggle ticker tone mute state
@@ -228,8 +253,14 @@ impl App {
             View::Overview => View::Details,
             View::Details => View::Notifications,
             View::Notifications => View::News,
-            View::News => View::Overview,
+            View::News => View::Positions,
+            View::Positions => View::Overview,
         };
+
+        // Trigger positions refresh when entering Positions view
+        if next_view == View::Positions {
+            self.needs_positions_refresh = true;
+        }
 
         self.view = next_view;
     }
@@ -273,6 +304,34 @@ impl App {
         self.news_loading = false;
         self.news_selected = 0;
         self.news_content_scroll = 0;
+    }
+
+    /// Request positions refresh
+    pub fn refresh_positions(&mut self) {
+        self.needs_positions_refresh = true;
+    }
+
+    /// Navigate to previous position
+    pub fn select_prev_position(&mut self) {
+        if self.positions_selected > 0 {
+            self.positions_selected -= 1;
+        }
+    }
+
+    /// Navigate to next position
+    pub fn select_next_position(&mut self) {
+        if let Some(account) = &self.margin_account {
+            if self.positions_selected < account.positions.len().saturating_sub(1) {
+                self.positions_selected += 1;
+            }
+        }
+    }
+
+    /// Handle margin account update from API
+    pub fn set_margin_account(&mut self, account: MarginAccount) {
+        self.margin_account = Some(account);
+        self.positions_loading = false;
+        self.positions_selected = 0;
     }
 
     /// Get selected coin symbols for news filtering
@@ -363,6 +422,9 @@ impl App {
             }
             PriceUpdate::Error(_) => {
                 // Could log the error or show it in UI
+            }
+            PriceUpdate::MarginPositions { account } => {
+                self.set_margin_account(account);
             }
         }
     }

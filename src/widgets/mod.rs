@@ -11,6 +11,7 @@ pub mod format;
 pub mod indicator_panel;
 pub mod indicators;
 pub mod polygonal_chart;
+pub mod positions_table;
 pub mod price_panel;
 pub mod status_header;
 pub mod text_box;

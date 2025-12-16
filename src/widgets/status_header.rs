@@ -24,9 +24,10 @@ pub fn build_status_header(
     let header_height = header_height(theme); // Derived from theme sizing
 
     // View tabs
-    let (overview_color, details_color, alerts_color, news_color) = match view {
+    let (overview_color, details_color, alerts_color, news_color, positions_color) = match view {
         View::Overview => (
             theme.accent,
+            theme.foreground_inactive,
             theme.foreground_inactive,
             theme.foreground_inactive,
             theme.foreground_inactive,
@@ -36,14 +37,24 @@ pub fn build_status_header(
             theme.accent,
             theme.foreground_inactive,
             theme.foreground_inactive,
+            theme.foreground_inactive,
         ),
         View::Notifications => (
             theme.foreground_inactive,
             theme.foreground_inactive,
             theme.accent,
             theme.foreground_inactive,
+            theme.foreground_inactive,
         ),
         View::News => (
+            theme.foreground_inactive,
+            theme.foreground_inactive,
+            theme.foreground_inactive,
+            theme.accent,
+            theme.foreground_inactive,
+        ),
+        View::Positions => (
+            theme.foreground_inactive,
             theme.foreground_inactive,
             theme.foreground_inactive,
             theme.foreground_inactive,
@@ -82,7 +93,8 @@ pub fn build_status_header(
                 .child(panel().text("[Overview]", overview_color, theme.font_normal))
                 .child(panel().text("[Details]", details_color, theme.font_normal))
                 .child(build_alerts_tab(alerts_color, unread_count, theme))
-                .child(panel().text("[News]", news_color, theme.font_normal)),
+                .child(panel().text("[News]", news_color, theme.font_normal))
+                .child(panel().text("[Positions]", positions_color, theme.font_normal)),
         )
         // Spacer
         .child(panel().flex_grow(1.0))

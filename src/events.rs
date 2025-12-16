@@ -28,6 +28,10 @@ pub enum AppEvent {
     ContentScrollUp,
     ContentScrollDown,
     RefreshNews,
+    // Positions view events
+    PositionUp,
+    PositionDown,
+    RefreshPositions,
     None,
 }
 
@@ -48,12 +52,14 @@ fn map_key_event(event: KeyEvent, view: View) -> AppEvent {
             View::Details => AppEvent::ZoomIn,
             View::Notifications => AppEvent::NotificationRuleUp,
             View::News => AppEvent::NewsScrollUp,
+            View::Positions => AppEvent::PositionUp,
             View::Overview => AppEvent::MoveUp,
         },
         KeyEvent::Down | KeyEvent::Char('j') => match view {
             View::Details => AppEvent::ZoomOut,
             View::Notifications => AppEvent::NotificationRuleDown,
             View::News => AppEvent::NewsScrollDown,
+            View::Positions => AppEvent::PositionDown,
             View::Overview => AppEvent::MoveDown,
         },
         KeyEvent::Left | KeyEvent::Char('h') => {
@@ -82,13 +88,11 @@ fn map_key_event(event: KeyEvent, view: View) -> AppEvent {
         KeyEvent::Tab | KeyEvent::Enter => AppEvent::SwitchView,
         KeyEvent::Char('w') => AppEvent::CycleWindow,
         KeyEvent::Char('c') => AppEvent::CycleChartType,
-        KeyEvent::Char('r') => {
-            if view == View::News {
-                AppEvent::RefreshNews
-            } else {
-                AppEvent::ResetScroll
-            }
-        }
+        KeyEvent::Char('r') => match view {
+            View::News => AppEvent::RefreshNews,
+            View::Positions => AppEvent::RefreshPositions,
+            _ => AppEvent::ResetScroll,
+        },
         KeyEvent::Home => AppEvent::ResetScroll,
         KeyEvent::Char('m') => AppEvent::ToggleMute,
 
@@ -143,6 +147,10 @@ fn apply_action(app: &mut App, action: AppEvent) {
         AppEvent::ContentScrollUp => app.scroll_content_up(),
         AppEvent::ContentScrollDown => app.scroll_content_down(),
         AppEvent::RefreshNews => app.refresh_news(),
+        // Positions view actions
+        AppEvent::PositionUp => app.select_prev_position(),
+        AppEvent::PositionDown => app.select_next_position(),
+        AppEvent::RefreshPositions => app.refresh_positions(),
         AppEvent::None => {}
     }
 }

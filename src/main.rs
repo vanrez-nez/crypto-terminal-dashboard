@@ -18,6 +18,7 @@ use crate::base::{
 use glow::HasContext;
 
 use api::binance::{fetch_candles, granularity_to_interval, BinanceProvider};
+use api::margin::{fetch_margin_account, MarginAccount};
 use api::news::{fetch_all_news, NewsArticle};
 use api::PriceUpdate;
 use app::{App, ChartType};
@@ -85,6 +86,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create channel for news updates
     let (news_tx, mut news_rx) = mpsc::channel::<Vec<NewsArticle>>(10);
     let (news_req_tx, mut news_req_rx) = mpsc::channel::<Vec<String>>(10);
+
+    // Create channel for positions updates
+    let (positions_tx, mut positions_rx) = mpsc::channel::<MarginAccount>(10);
+    let (positions_req_tx, mut positions_req_rx) = mpsc::channel::<()>(10);
 
     // Determine provider
     let provider = config.provider();
@@ -159,6 +164,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
+    // Spawn positions fetcher task (requires API keys)
+    if use_live {
+        if let (Ok(api_key), Ok(api_secret)) = (
+            std::env::var("BINANCE_API_KEY"),
+            std::env::var("BINANCE_API_SECRET"),
+        ) {
+            // Enable positions feature in app
+            app.enable_positions();
+
+            rt.spawn(async move {
+                while positions_req_rx.recv().await.is_some() {
+                    match fetch_margin_account(&api_key, &api_secret).await {
+                        Ok(account) => {
+                            let _ = positions_tx.send(account).await;
+                        }
+                        Err(e) => {
+                            eprintln!("Margin account fetch error: {}", e);
+                        }
+                    }
+                }
+            });
+        } else {
+            eprintln!("BINANCE_API_KEY or BINANCE_API_SECRET not set - Positions view disabled");
+        }
+    }
+
     // Spawn news fetcher task (always available)
     rt.spawn(async move {
         while let Some(coins) = news_req_rx.recv().await {
@@ -179,6 +210,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         candle_req_tx,
         news_req_tx,
         &mut news_rx,
+        positions_req_tx,
+        &mut positions_rx,
         &mut news_cache,
         &rt,
         &pairs,
@@ -203,6 +236,8 @@ fn run_gl_loop(
     candle_req_tx: mpsc::Sender<(String, u32)>,
     news_req_tx: mpsc::Sender<Vec<String>>,
     news_rx: &mut mpsc::Receiver<Vec<NewsArticle>>,
+    positions_req_tx: mpsc::Sender<()>,
+    positions_rx: &mut mpsc::Receiver<MarginAccount>,
     news_cache: &mut Option<NewsCache>,
     rt: &tokio::runtime::Runtime,
     pairs: &[String],
@@ -259,6 +294,20 @@ fn run_gl_loop(
                 fallback.truncate(200);
                 app.set_news(fallback);
             }
+        }
+
+        // 2.7. Handle positions refresh requests
+        if app.needs_positions_refresh {
+            app.needs_positions_refresh = false;
+            if app.positions_available {
+                app.positions_loading = true;
+                let _ = rt.block_on(positions_req_tx.send(()));
+            }
+        }
+
+        // 2.8. Process positions updates (non-blocking)
+        if let Ok(account) = positions_rx.try_recv() {
+            app.handle_update(PriceUpdate::MarginPositions { account });
         }
 
         // 3. Process price updates (non-blocking)
@@ -411,6 +460,7 @@ fn build_current_view(
     use crate::app::View;
     use crate::views::{
         build_details_view, build_news_view, build_notifications_view, build_overview_view,
+        build_positions_view,
     };
 
     match app.view {
@@ -431,6 +481,10 @@ fn build_current_view(
         },
         View::News => ViewResult {
             root: build_news_view(app, theme, width, height).build(tree),
+            chart_areas: vec![],
+        },
+        View::Positions => ViewResult {
+            root: build_positions_view(app, theme, width, height).build(tree),
             chart_areas: vec![],
         },
     }
