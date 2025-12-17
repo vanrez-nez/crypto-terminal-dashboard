@@ -91,9 +91,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (positions_tx, mut positions_rx) = mpsc::channel::<MarginAccount>(10);
     let (positions_req_tx, mut positions_req_rx) = mpsc::channel::<()>(10);
 
+    // Create channel for interval changes (for kline stream updates)
+    let (interval_tx, interval_rx) = mpsc::channel::<String>(10);
+
     // Determine provider
     let provider = config.provider();
     let use_live = provider == "binance";
+
+    // Check if running in testnet mode
+    if use_live && api::binance::is_testnet_mode() {
+        eprintln!("⚠️  WARNING: Running in TESTNET mode");
+        eprintln!("⚠️  Endpoints: https://testnet.binance.vision");
+        eprintln!("⚠️  Make sure you're using testnet API keys");
+    }
 
     // Create app with appropriate data source
     let coins = if use_live {
@@ -132,10 +142,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Spawn WebSocket task if using live data
     if use_live {
-        let ws_provider = BinanceProvider::new(pairs.clone());
+        let initial_granularity = app.time_window.granularity();
+        let initial_interval = granularity_to_interval(initial_granularity);
+        let ws_provider = BinanceProvider::new(pairs.clone(), initial_interval);
         let ws_tx = price_tx.clone();
         rt.spawn(async move {
-            ws_provider.run(ws_tx).await;
+            ws_provider.run(ws_tx, interval_rx).await;
         });
 
         // Spawn candle fetcher task
@@ -208,6 +220,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut keyboard,
         &mut price_rx,
         candle_req_tx,
+        interval_tx,
         news_req_tx,
         &mut news_rx,
         positions_req_tx,
@@ -234,6 +247,7 @@ fn run_gl_loop(
     keyboard: &mut KeyboardInput,
     price_rx: &mut mpsc::Receiver<PriceUpdate>,
     candle_req_tx: mpsc::Sender<(String, u32)>,
+    interval_tx: mpsc::Sender<String>,
     news_req_tx: mpsc::Sender<Vec<String>>,
     news_rx: &mut mpsc::Receiver<Vec<NewsArticle>>,
     positions_req_tx: mpsc::Sender<()>,
@@ -264,6 +278,12 @@ fn run_gl_loop(
         if app.needs_candle_refresh {
             app.needs_candle_refresh = false;
             let granularity = app.time_window.granularity();
+            let interval = granularity_to_interval(granularity);
+
+            // Send interval change to WebSocket (for kline stream updates)
+            let _ = rt.block_on(interval_tx.send(interval.to_string()));
+
+            // Also fetch historical data for the new interval
             for pair in pairs {
                 let _ = rt.block_on(candle_req_tx.send((pair.clone(), granularity)));
             }

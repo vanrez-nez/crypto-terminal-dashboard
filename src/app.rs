@@ -420,6 +420,15 @@ impl App {
                     coin.set_candles(candles);
                 }
             }
+            PriceUpdate::Kline {
+                symbol,
+                candle,
+                is_closed,
+            } => {
+                if let Some(coin) = self.coins.iter_mut().find(|c| c.symbol == symbol) {
+                    coin.update_candle(candle, is_closed);
+                }
+            }
             PriceUpdate::Error(_) => {
                 // Could log the error or show it in UI
             }

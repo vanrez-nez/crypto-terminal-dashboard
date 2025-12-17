@@ -125,7 +125,7 @@ impl CoinData {
         }
     }
 
-    /// Update current price from WebSocket ticker and recalculate indicators
+    /// Update current price from WebSocket ticker (display only, doesn't modify candles)
     pub fn update_price(&mut self, price: f64) {
         // Track change history for dynamic color gradient
         if self.price > 0.0 {
@@ -143,20 +143,8 @@ impl CoinData {
         self.prev_price = self.price;
         self.price = price;
 
-        // Update the last candle's close price to current live price
-        // This makes indicators reflect "what if the candle closed now"
-        if let Some(last_candle) = self.candles.last_mut() {
-            last_candle.close = price;
-            // Also update high/low if price exceeds them
-            if price > last_candle.high {
-                last_candle.high = price;
-            }
-            if price < last_candle.low {
-                last_candle.low = price;
-            }
-            // Recalculate indicators with updated candle
-            self.recalculate_indicators();
-        }
+        // NOTE: Candles are now managed by update_candle() from kline stream
+        // Ticker updates only affect price display, not candle array
     }
 
     /// Set candles from historical data and recalculate indicators
@@ -171,6 +159,49 @@ impl CoinData {
                 self.price = last.close;
             }
         }
+    }
+
+    /// Update candles from real-time kline WebSocket data
+    /// Creates new candles when timestamp advances (period change)
+    pub fn update_candle(&mut self, candle: Candle, _is_closed: bool) {
+        const MAX_CANDLES: usize = 500;
+
+        println!("[DEBUG] update_candle: time={}, candles.len()={}", candle.time, self.candles.len());
+
+        // Find or create the candle based on timestamp
+        if let Some(last) = self.candles.last_mut() {
+            if last.time == candle.time {
+                // Same period - update existing candle
+                println!("[DEBUG] Updating existing candle at time {}", candle.time);
+                *last = candle;
+            } else if candle.time > last.time {
+                // New period started - add new candle
+                println!("[DEBUG] New period detected! Creating new candle at time {}", candle.time);
+                self.candles.push(candle);
+
+                // Trim old candles if exceeding max
+                if self.candles.len() > MAX_CANDLES {
+                    let trim_count = self.candles.len() - MAX_CANDLES;
+                    self.candles.drain(0..trim_count);
+                }
+            } else {
+                // Ignore old data (candle.time < last.time)
+                println!("[WARN] Received old candle data, ignoring");
+            }
+        } else {
+            // No candles yet - add first one
+            println!("[DEBUG] Adding first candle at time {}", candle.time);
+            self.candles.push(candle);
+        }
+
+        // Update current price from latest candle
+        if let Some(last) = self.candles.last() {
+            self.price = last.close;
+        }
+
+        // Recalculate indicators and sparkline
+        self.recalculate_indicators();
+        self.update_sparkline();
     }
 
     fn recalculate_indicators(&mut self) {

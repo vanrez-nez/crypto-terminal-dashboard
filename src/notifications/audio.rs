@@ -9,12 +9,39 @@ use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::sync::Mutex;
 
-/// Track the last spawned audio process to prevent resource exhaustion
-static AUDIO_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
+/// Separate audio channels to prevent interference
+/// Alert channel for notifications
+static ALERT_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
+/// Tone channel for ticker price tones
+static TONE_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
 
-/// Clean up any finished audio process
-fn cleanup_audio_process() {
-    if let Ok(mut guard) = AUDIO_PROCESS.lock() {
+/// Clean up any finished audio process from the alert channel
+fn cleanup_alert_process() {
+    if let Ok(mut guard) = ALERT_PROCESS.lock() {
+        if let Some(ref mut child) = *guard {
+            // Try to reap the process if it's done
+            match child.try_wait() {
+                Ok(Some(_)) => {
+                    // Process finished, clear it
+                    *guard = None;
+                }
+                Ok(None) => {
+                    // Still running - kill it to prevent pile-up
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    *guard = None;
+                }
+                Err(_) => {
+                    *guard = None;
+                }
+            }
+        }
+    }
+}
+
+/// Clean up any finished audio process from the tone channel
+fn cleanup_tone_process() {
+    if let Ok(mut guard) = TONE_PROCESS.lock() {
         if let Some(ref mut child) = *guard {
             // Try to reap the process if it's done
             match child.try_wait() {
@@ -119,13 +146,14 @@ pub fn init_audio() -> bool {
     }
 }
 
-/// Play an alert sound (non-blocking)
+/// Play an alert sound (non-blocking) on the alert channel
 ///
 /// If a custom sound file is specified and found in sounds/, it will be played.
 /// Otherwise, falls back to the generated beep.
+/// Uses a separate audio channel from ticker tones to prevent interference.
 pub fn play_alert(sound: Option<&str>) {
-    // Clean up any previous process first
-    cleanup_audio_process();
+    // Clean up any previous alert process first
+    cleanup_alert_process();
 
     let sound_path = match sound {
         Some(filename) => {
@@ -139,7 +167,7 @@ pub fn play_alert(sound: Option<&str>) {
 
     // Use aplay with quiet mode (suppress output)
     if let Ok(child) = Command::new("aplay").args(["-q", &sound_path]).spawn() {
-        if let Ok(mut guard) = AUDIO_PROCESS.lock() {
+        if let Ok(mut guard) = ALERT_PROCESS.lock() {
             *guard = Some(child);
         }
     }
@@ -193,14 +221,16 @@ pub fn generate_tone(frequency: f32, duration_ms: u32) -> Option<String> {
     }
 }
 
-/// Play a ticker tone at the specified frequency (non-blocking)
+/// Play a ticker tone at the specified frequency (non-blocking) on the tone channel
+///
+/// Uses a separate audio channel from alerts to prevent interference.
 pub fn play_tone(frequency: f32, duration_ms: u32) {
-    // Clean up any previous process first
-    cleanup_audio_process();
+    // Clean up any previous tone process first
+    cleanup_tone_process();
 
     if let Some(path) = generate_tone(frequency, duration_ms) {
         if let Ok(child) = Command::new("aplay").args(["-q", &path]).spawn() {
-            if let Ok(mut guard) = AUDIO_PROCESS.lock() {
+            if let Ok(mut guard) = TONE_PROCESS.lock() {
                 *guard = Some(child);
             }
         }

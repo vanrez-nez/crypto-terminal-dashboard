@@ -33,6 +33,12 @@ pub enum PriceUpdate {
         symbol: String,
         candles: Vec<Candle>,
     },
+    /// Real-time kline (candle) update from WebSocket
+    Kline {
+        symbol: String,
+        candle: Candle,
+        is_closed: bool,
+    },
     /// Connection status change
     Connected,
     Disconnected,

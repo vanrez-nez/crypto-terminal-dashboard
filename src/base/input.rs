@@ -194,6 +194,9 @@ impl KeyboardInput {
                 continue;
             }
 
+            // Debug: log all key press events
+            println!("[DEBUG] Key pressed: code={}, value={}", event.code, event.value);
+
             // Map key codes to events
             let key_event = match event.code {
                 keycodes::KEY_ESC => Some(KeyEvent::Escape),

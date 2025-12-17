@@ -4,9 +4,21 @@ use anyhow::Result;
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
 use sha2::Sha256;
+use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const BINANCE_API_URL: &str = "https://api.binance.com";
+/// Get the appropriate Binance API URL based on environment
+fn get_binance_api_url() -> String {
+    if env::var("BINANCE_USE_TESTNET")
+        .unwrap_or_else(|_| "false".to_string())
+        .to_lowercase()
+        == "true"
+    {
+        "https://testnet.binance.vision".to_string()
+    } else {
+        "https://api.binance.com".to_string()
+    }
+}
 
 /// Margin position with actual API data
 #[derive(Debug, Clone)]
@@ -80,7 +92,7 @@ async fn fetch_asset_prices(assets: &[String]) -> Result<std::collections::HashM
     let stablecoins = ["USDT", "BUSD", "USDC", "TUSD", "USDP", "DAI"];
 
     // Fetch ticker prices for all trading pairs
-    let url = format!("{}/api/v3/ticker/price", BINANCE_API_URL);
+    let url = format!("{}/api/v3/ticker/price", get_binance_api_url());
     let response: Vec<TickerPrice> = reqwest::get(&url).await?.json().await?;
 
     // Map asset to USDT price
@@ -158,7 +170,9 @@ pub async fn fetch_margin_account(api_key: &str, api_secret: &str) -> Result<Mar
     // Build final URL
     let url = format!(
         "{}/sapi/v1/margin/account?{}&signature={}",
-        BINANCE_API_URL, query_string, signature
+        get_binance_api_url(),
+        query_string,
+        signature
     );
 
     // Make authenticated request
